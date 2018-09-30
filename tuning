@@ -1,0 +1,13 @@
+-AddMinimapLayer and MinibatchDiscrimination
+-Learning rate
+-Loss function (Adam or SGD)
+-Block filter setting,  (33%?)
+-Kernel Size
+-Normal distribution for latent vector
+-Latent vector size
+-Activation functions (ReLU vs Leaky)
+-Leaky slope
+-Convultion filter counts
+-Dropout?
+-Normal distribution labels
+-
