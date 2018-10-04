@@ -23,8 +23,8 @@ def load_minimap_values():
 
 def load_block_images():
     blockDict = {}
-    for filename in os.listdir("./Blocks"):
-        file = "./Blocks/%s" % filename
+    for filename in os.listdir("./blocks"):
+        file = "./blocks/%s" % filename
         if os.path.isfile(file):
             blockDict[int(filename[1:-4])] = Image.open(file)
     return blockDict
@@ -412,7 +412,7 @@ def save_source_to_dir(baseDir):
             copyfile(path, "%s\\%s" % (sourceDir, path))
 
 def get_latest_version(dir):
-    highestVer = 1
+    highestVer = 0
     for path in os.listdir(dir):
         pathVer = int(path[3:])
         if pathVer > highestVer:

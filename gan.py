@@ -77,29 +77,23 @@ def generator_model():
     model.add(Dense(input_dim=256, units=4*4*512))
     model.add(LeakyReLU(alpha=0.2))
     model.add(Reshape((4, 4, 512)))
-    model.add(Conv2DTranspose(512, kernel_size=3, strides=2, padding="same", kernel_initializer="glorot_normal"))
+    model.add(Conv2DTranspose(512, kernel_size=5, strides=2, padding="same", kernel_initializer="glorot_normal"))
     model.add(LeakyReLU(alpha=0.2))
     model.add(BatchNormalization(scale=False))
-    #model.add(Dropout(0.5))
-    model.add(Conv2DTranspose(256, kernel_size=4, strides=1, padding="same", kernel_initializer="glorot_normal"))
+    #model.add(Dropout(0.25))
+    model.add(Conv2DTranspose(256, kernel_size=5, strides=2, padding="same", kernel_initializer="glorot_normal"))
     model.add(LeakyReLU(alpha=0.2))
     model.add(BatchNormalization(scale=False))
-    #model.add(Dropout(0.5))
+    #model.add(Dropout(0.25))
     model.add(Conv2DTranspose(128, kernel_size=5, strides=2, padding="same", kernel_initializer="glorot_normal"))
     model.add(LeakyReLU(alpha=0.2))
     model.add(BatchNormalization(scale=False))
-    #model.add(Dropout(0.5))
-    model.add(Conv2DTranspose(64, kernel_size=6, strides=1, padding="same", kernel_initializer="glorot_normal"))
+    #model.add(Dropout(0.25))
+    model.add(Conv2DTranspose(64, kernel_size=5, strides=2, padding="same", kernel_initializer="glorot_normal"))
     model.add(LeakyReLU(alpha=0.2))
     model.add(BatchNormalization(scale=False))
-    #model.add(Dropout(0.5))
-    model.add(Conv2DTranspose(32, kernel_size=7, strides=2, padding="same", kernel_initializer="glorot_normal"))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(BatchNormalization(scale=False))
-    #model.add(Dropout(0.5))
-    model.add(Conv2DTranspose(16, kernel_size=8, strides=1, padding="same", kernel_initializer="glorot_normal"))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(Conv2DTranspose(1, kernel_size=9, strides=2, padding="same", kernel_initializer="glorot_normal"))
+    # model.add(Dropout(0.25))
+    model.add(Conv2DTranspose(1, kernel_size=5, strides=2, padding="same", kernel_initializer="glorot_normal"))
     model.add(Activation("tanh"))
     model.trainable = True
     model.summary()
@@ -107,7 +101,7 @@ def generator_model():
 
 def discriminator_model(blockBackwardsDict, minimapValues):
     model = Sequential(name="discriminator")
-    model.add(keras.layers.InputLayer(input_shape=(64, 64, 1)))
+    model.add(keras.layers.InputLayer(input_shape=(128, 128, 1)))
     #model.add(GaussianNoise(0.05))
     #model.add(AddMinimapValues(blockBackwardsDict, minimapValues))
     model.add(Conv2D(16, kernel_size=5, strides=1, padding="same", kernel_initializer="glorot_normal"))
@@ -155,6 +149,7 @@ def train(epochs, batch_size, worldCount, versionName = None):
     graphDir = utils.check_or_create_local_path("graph", versionDir)
     worldsDir = utils.check_or_create_local_path("worlds", versionDir)
     previewsDir = utils.check_or_create_local_path("previews", versionDir)
+    modelsDir = utils.check_or_create_local_path("models", versionDir)
 
     print ("Saving source...")
     utils.save_source_to_dir(versionDir)
@@ -178,7 +173,7 @@ def train(epochs, batch_size, worldCount, versionName = None):
     d_on_g = None
 
     #Try to load full model, otherwise try to load weights
-    if os.path.exists("%s\\discriminator.h5" % versionDir) and os.path.exists("%s\\generator.h5" % versionDir):
+    '''if os.path.exists("%s\\discriminator.h5" % versionDir) and os.path.exists("%s\\generator.h5" % versionDir):
         print("Found models.")
         d = load_model("%s\\discriminator.h5" % versionDir)
         g = load_model("%s\\generator.h5" % versionDir)
@@ -188,19 +183,19 @@ def train(epochs, batch_size, worldCount, versionName = None):
         if os.path.exists("%s\\discriminator.model" % versionDir) and os.path.exists("%s\\generator.model" % versionDir):
             print("Found weights.")
             d.load_weights("%s\\discriminator.model" % versionDir)
-            g.load_weights("%s\\generator.model" % versionDir)
+            g.load_weights("%s\\generator.model" % versionDir)'''
 
-        print("Compiling model...")
-        d_optim = SGD(lr=0.0001)
-        g_optim = Adam(lr=0.0001, beta_1=0.5)
+    print("Compiling model...")
+    d_optim = SGD(lr=0.0001)
+    g_optim = Adam(lr=0.0001, beta_1=0.5)
 
-        d = discriminator_model(blockBackwardDict, minimapValues)
-        d.compile(loss="binary_crossentropy", optimizer=d_optim, metrics=["accuracy"])
+    d = discriminator_model(blockBackwardDict, minimapValues)
+    d.compile(loss="binary_crossentropy", optimizer=d_optim, metrics=["accuracy"])
 
-        g = generator_model()
-        d_on_g = generator_containing_discriminator(g, d)
+    g = generator_model()
+    d_on_g = generator_containing_discriminator(g, d)
 
-        d_on_g.compile(loss="binary_crossentropy", optimizer=g_optim)
+    d_on_g.compile(loss="binary_crossentropy", optimizer=g_optim)
 
     #Delete existing worlds and previews if any
     print("Checking for old generated data...")
@@ -237,7 +232,7 @@ def train(epochs, batch_size, worldCount, versionName = None):
     cpuCount = multiprocessing.cpu_count()
     utilizationCount = cpuCount - 1
     print ("Loading worlds using %s cores." % (utilizationCount))
-    X_train = load_worlds(worldCount, "%s\\WorldRepo3\\" % curDir, 64, 64, blockForwardDict, minimapValues, utilizationCount)
+    X_train = load_worlds(worldCount, "%s\\WorldRepo3\\" % curDir, 128, 128, blockForwardDict, minimapValues, utilizationCount)
 
     #Start Training loop
     numberOfBatches = int(worldCount / batch_size)
@@ -250,6 +245,7 @@ def train(epochs, batch_size, worldCount, versionName = None):
         #Create directories for current epoch
         curWorldsCur = utils.check_or_create_local_path("epoch%s" % epoch, worldsDir)
         curPreviewsDir = utils.check_or_create_local_path("epoch%s" % epoch, previewsDir)
+        curModelsDir = utils.check_or_create_local_path("epoch%s" % epoch, modelsDir)
 
         print("Shuffling data...")
         np.random.shuffle(X_train)
@@ -330,8 +326,10 @@ def train(epochs, batch_size, worldCount, versionName = None):
             # Save models
             if minibatchIndex % 100 == 99 or minibatchIndex == numberOfBatches - 1:
                 try:
-                    d.save("%s\\discriminator.h5" % versionDir)
-                    g.save("%s\\generator.h5" % versionDir)
+                    d.save("%s\\discriminator.h5" % curModelsDir)
+                    g.save("%s\\generator.h5" % curModelsDir)
+                    d.save_weights("%s\\discriminator.weights" % curModelsDir)
+                    g.save_weights("%s\\generator.weights" % curModelsDir)
                 except:
                     print("Failed to save data.")
                     pass
@@ -349,9 +347,7 @@ def train(epochs, batch_size, worldCount, versionName = None):
 
 
 def main():
-    #tests.test_addminimap_layer()
-    #tests.test_rotations()
-    train(epochs=1000, batch_size=32, worldCount=100000)
+    train(epochs=1000, batch_size=16, worldCount=15000)
 
 if __name__ == "__main__":
     main()
