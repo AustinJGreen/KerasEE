@@ -1,8 +1,10 @@
-def is_solid(id):
-    return (9 <= id and id <= 97 or 122 <= id and id <= 217 or id >= 1001 and id <= 1499 or id >= 2000) and id != 83 and id != 77 and id != 1520
+def is_solid(block_id):
+    return (9 <= block_id <= 97 or 122 <= block_id <= 217 or 1001 <= block_id <= 1499 or block_id >= 2000) \
+           and block_id != 83 and block_id != 77 and block_id != 1520
 
-def is_action(id):
-    actionBlocks = {
+
+def is_action(block_id):
+    action_blocks = {
         0,
         1,
         2,
@@ -57,10 +59,11 @@ def is_action(id):
         1064
     }
 
-    return id in actionBlocks
+    return block_id in action_blocks
 
-def is_decoration(id):
-    decorBlocks = {
+
+def is_decoration(block_id):
+    decor_blocks = {
         1000,
         1501,
         1503,
@@ -294,51 +297,65 @@ def is_decoration(id):
         496
     }
 
-    return id in decorBlocks
+    return block_id in decor_blocks
 
-def simplify_block(id):
-    convertMap = {
-        411 : 1,
-        412 : 2,
-        413 : 3,
-        1519 : 1518,
-        414 : 4,
-        460 : 459,
-        1534 : 118,
-        120 : 118,
-        98 : 118,
-        99 : 118,
-        424 : 118,
-        472 : 118,
-        1146 : 118,
-        1563 : 118,
-        1580 : 361,
-        368 : 361
+
+def get_block_category(block_id):
+    if is_solid(block_id):
+        return 0
+    elif is_action(block_id):
+        return 1
+    elif is_decoration(block_id):
+        return 2
+    else:
+        return 3
+
+
+def rotate_block(block_id):
+    convert_map = {
+        0: 1,
+        1: 2,
+        2: 3,
+        3: 1518,
+        411: 412,
+        412: 413,
+        413: 0,
+        117: 114,
+        114: 116,
+        116: 115,
+        115: 117,
+        1518: 1
     }
 
-    if id in convertMap:
-        return convertMap[id]
-    elif is_solid(id):
+    if block_id in convert_map:
+        return convert_map[block_id]
+    else:
+        return block_id
+
+
+def simplify_block(block_id):
+    convert_map = {
+        411: 1,
+        412: 2,
+        413: 3,
+        1519: 1518,
+        414: 4,
+        460: 459,
+        1534: 118,
+        120: 118,
+        98: 118,
+        99: 118,
+        424: 118,
+        472: 118,
+        1146: 118,
+        1563: 118,
+        1580: 361,
+        368: 361
+    }
+
+    if block_id in convert_map:
+        return convert_map[block_id]
+    elif is_solid(block_id):
         return 9
     else:
-        return id
-
-def rotate_block(id):
-    convertMap = {
-        0 : 1,
-        1 : 2,
-        2 : 3,
-        3 : 0,
-        411 : 412,
-        412 : 413,
-        413 : 0,
-        117 : 114,
-        114 : 116,
-        116 : 115,
-        115 : 117
-    }
-
-    if id in convertMap:
-        return convertMap[id]
-    else:
-        return id
+        return block_id
