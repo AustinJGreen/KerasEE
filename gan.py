@@ -7,20 +7,17 @@ import numpy as np
 import tensorflow as tf
 from keras import backend as K
 from keras.layers import Dense
-from keras.layers import LeakyReLU, Dropout
 from keras.layers import Reshape
+from keras.layers import SpatialDropout2D
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
-from keras.layers.core import Activation
-from keras.layers.core import Flatten
+from keras.layers.core import Activation, Flatten
 from keras.layers.normalization import BatchNormalization
-from keras.models import Sequential
-from keras.optimizers import Adam, SGD
+from keras.layers.pooling import MaxPooling2D
+from keras.models import Sequential, load_model
+from keras.optimizers import Adam
 
 import utils
 from loadworker import GanWorldLoader
-
-
-# from keras.utils.generic_utils import get_custom_objects
 
 
 def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_values, thread_count):
@@ -57,29 +54,45 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
     return world_array
 
 
-def binary_activation(x):
-    return keras.backend.greater(0.5, x)
-
-
 def generator_model():
     model = Sequential(name="generator")
+
     model.add(Dense(input_dim=256, units=4 * 4 * 512))
-    model.add(LeakyReLU(alpha=0.2))
+    model.add(Activation('relu'))
+
     model.add(Reshape((4, 4, 512)))
-    model.add(Conv2DTranspose(256, kernel_size=5, strides=2, padding="same", kernel_initializer="glorot_normal"))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(BatchNormalization(scale=False))
-    # model.add(Dropout(0.25))
-    model.add(Conv2DTranspose(128, kernel_size=5, strides=2, padding="same", kernel_initializer="glorot_normal"))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(BatchNormalization(scale=False))
-    # model.add(Dropout(0.25))
-    model.add(Conv2DTranspose(64, kernel_size=5, strides=2, padding="same", kernel_initializer="glorot_normal"))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(BatchNormalization(scale=False))
-    # model.add(Dropout(0.25))
-    model.add(Conv2DTranspose(11, kernel_size=5, strides=2, padding="same", kernel_initializer="glorot_normal"))
-    model.add(Activation(binary_activation))
+
+    model.add(Conv2DTranspose(256, kernel_size=5, strides=2, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2DTranspose(128, kernel_size=3, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2DTranspose(128, kernel_size=5, strides=2, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2DTranspose(64, kernel_size=3, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2DTranspose(64, kernel_size=5, strides=2, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2DTranspose(32, kernel_size=3, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2DTranspose(32, kernel_size=5, strides=2, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2DTranspose(11, kernel_size=3, strides=1, padding="same"))
+    model.add(Activation('sigmoid'))
+
     model.trainable = True
     model.summary()
     return model
@@ -88,27 +101,45 @@ def generator_model():
 def discriminator_model():
     model = Sequential(name="discriminator")
     model.add(keras.layers.InputLayer(input_shape=(64, 64, 11)))
-    model.add(Conv2D(16, kernel_size=5, strides=1, padding="same", kernel_initializer="glorot_normal"))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(Dropout(0.5))
-    model.add(Conv2D(32, kernel_size=5, strides=1, padding="same", kernel_initializer="glorot_normal"))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(BatchNormalization())
-    model.add(Dropout(0.5))
-    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same", kernel_initializer="glorot_normal"))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(BatchNormalization())
-    model.add(Dropout(0.5))
-    model.add(Conv2D(128, kernel_size=5, strides=1, padding="same", kernel_initializer="glorot_normal"))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(BatchNormalization())
-    model.add(Dropout(0.5))
-    model.add(Conv2D(256, kernel_size=5, strides=1, padding="same", kernel_initializer="glorot_normal"))
-    model.add(LeakyReLU(alpha=0.2))
-    model.add(BatchNormalization())
-    model.add(Dropout(0.5))
+
+    model.add(Conv2D(64, kernel_size=3, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(64, kernel_size=3, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(SpatialDropout2D(0.2))
+
+    model.add(Conv2D(128, kernel_size=3, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(128, kernel_size=3, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(SpatialDropout2D(0.2))
+
+    model.add(Conv2D(256, kernel_size=3, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(256, kernel_size=3, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(SpatialDropout2D(0.2))
+
     model.add(Flatten())
-    model.add(Dense(1, activation="sigmoid", kernel_initializer="glorot_normal"))
+
+    model.add(Dense(512, activation='relu'))
+    model.add(Dense(1, activation="sigmoid"))
+
     model.trainable = True
     model.summary()
     return model
@@ -151,23 +182,20 @@ def train(epochs, batch_size, world_count, version_name=None):
     print("Loading model...")
     d = None
     g = None
-    d_on_g = None
 
     # Try to load full model, otherwise try to load weights
-    '''if os.path.exists("%s\\discriminator.h5" % versionDir) and os.path.exists("%s\\generator.h5" % versionDir):
+    if os.path.exists("%s\\discriminator.h5" % version_dir) and os.path.exists("%s\\generator.h5" % version_dir):
         print("Found models.")
-        d = load_model("%s\\discriminator.h5" % versionDir)
-        g = load_model("%s\\generator.h5" % versionDir)
-        d_on_g = generator_containing_discriminator(g, d)
-    else:
-        #Load any existing weights if any
-        if os.path.exists("%s\\discriminator.model" % versionDir) and os.path.exists("%s\\generator.model" % versionDir):
-            print("Found weights.")
-            d.load_weights("%s\\discriminator.model" % versionDir)
-            g.load_weights("%s\\generator.model" % versionDir)'''
+        d = load_model("%s\\discriminator.h5" % version_dir)
+        g = load_model("%s\\generator.h5" % version_dir)
+    elif os.path.exists("%s\\discriminator.model" % version_dir) and os.path.exists(
+            "%s\\generator.model" % version_dir):
+        print("Found weights.")
+        d.load_weights("%s\\discriminator.model" % version_dir)
+        g.load_weights("%s\\generator.model" % version_dir)
 
     print("Compiling model...")
-    d_optim = SGD(lr=0.0001)
+    d_optim = Adam(lr=0.00002)
     g_optim = Adam(lr=0.0001, beta_1=0.5)
 
     d = discriminator_model()
@@ -238,7 +266,7 @@ def train(epochs, batch_size, world_count, version_name=None):
             real_worlds = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
 
             # Get fake set of images
-            noise = np.random.normal(0, 0.5, size=(batch_size, 256))
+            noise = np.random.normal(0, 1, size=(batch_size, 256))
             fake_worlds = g.predict(noise)
 
             real_labels = np.ones((batch_size, 1))  # np.random.uniform(0.9, 1.1, size=(batch_size,))
@@ -296,7 +324,7 @@ def train(epochs, batch_size, world_count, version_name=None):
             d.trainable = False
 
             # Training generator on X data, with Y labels
-            noise = np.random.normal(0, 0.5, (batch_size, 256))
+            noise = np.random.normal(0, 1, (batch_size, 256))
 
             # Train generator to generate real
             g_loss = d_on_g.train_on_batch(noise, real_labels)
@@ -314,23 +342,13 @@ def train(epochs, batch_size, world_count, version_name=None):
                     g.save("%s\\generator.h5" % cur_models_dir)
                     d.save_weights("%s\\discriminator.weights" % cur_models_dir)
                     g.save_weights("%s\\generator.weights" % cur_models_dir)
-                except:
+                except ImportError:
                     print("Failed to save data.")
                     pass
 
-            # Debugging
-            # if d_loss[1] == 1 or d_loss[0] == 0:
-            #    batchesLasted = (epoch * numberOfBatches) + minibatchIndex + 1
-            #    print ("Tune lasted %s" % batchesLasted)
-            #    return
-
-        # Perform some checks on the gradients of each model
-        # check_grads(d, "discriminator")
-        # check_grads(g, "generator")
-
 
 def main():
-    train(epochs=1000, batch_size=64, world_count=1000)
+    train(epochs=100, batch_size=64, world_count=50000)
 
 
 if __name__ == "__main__":

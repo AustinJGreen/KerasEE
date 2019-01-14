@@ -70,10 +70,9 @@ def decode_world2d_binary(world_data):
             value = 0
             for bit in range(world_data.shape[2]):
                 bit_data = world_data[x, y, bit]
-                # bit_value = 0
-                # if bit_data >= 0:
-                #    bit_value = 1
-                bit_value = int(bit_data)
+                bit_value = 0
+                if bit_data >= 0.5:
+                    bit_value = 1
                 value = value | (bit_value << (10 - bit))
             world_copy[x, y] = value
     return world_copy
