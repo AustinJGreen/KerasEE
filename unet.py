@@ -1,5 +1,3 @@
-import os
-
 from keras import backend as K
 from keras.layers import Input, Conv2D, UpSampling2D, LeakyReLU, BatchNormalization, Activation
 from keras.layers.merge import Concatenate
@@ -60,14 +58,17 @@ class PConvUnet:
 
         # ENCODER
         def encoder_layer(img_in, mask_in, filters, kernel_size, bn=True):
-            conv, mask = PConv2D(filters, kernel_size, strides=2, padding='same')([img_in, mask_in])
+            conv1, mask1 = PConv2D(filters, kernel_size, strides=2, padding='same')([img_in, mask_in])
             if bn:
-                conv = BatchNormalization(name='EncBN' + str(encoder_layer.counter))(conv, training=train_bn)
-            conv = Activation('relu')(conv)
-            encoder_layer.counter += 1
-            return conv, mask
+                conv1 = BatchNormalization(momentum=0.8)(conv1, training=train_bn)
+            conv1 = Activation('relu')(conv1)
 
-        encoder_layer.counter = 0
+            conv2, mask2 = PConv2D(filters, kernel_size, strides=1, padding='same')([conv1, mask1])
+            if bn:
+                conv2 = BatchNormalization(momentum=0.8)(conv2, training=train_bn)
+            conv2 = Activation('relu')(conv2)
+
+            return conv2, mask2
 
         e_conv1, e_mask1 = encoder_layer(inputs_world, inputs_mask, 64, 7, bn=False)
         e_conv2, e_mask2 = encoder_layer(e_conv1, e_mask1, 128, 5)
@@ -81,18 +82,22 @@ class PConvUnet:
             up_mask = UpSampling2D(size=(2, 2))(mask_in)
             concat_img = Concatenate(axis=3)([e_conv, up_img])
             concat_mask = Concatenate(axis=3)([e_mask, up_mask])
-            conv, mask = PConv2D(filters, kernel_size, padding='same')([concat_img, concat_mask])
+            conv1, mask1 = PConv2D(filters, kernel_size, padding='same')([concat_img, concat_mask])
             if bn:
-                conv = BatchNormalization()(conv)
-            conv = LeakyReLU(alpha=0.2)(conv)
-            return conv, mask
+                conv1 = BatchNormalization(momentum=0.8)(conv1)
+            conv1 = LeakyReLU(alpha=0.2)(conv1)
+            conv2, mask2 = PConv2D(filters, kernel_size, padding='same')([conv1, mask1])
+            if bn:
+                conv2 = BatchNormalization(momentum=0.8)(conv2)
+            conv2 = LeakyReLU(alpha=0.2)(conv2)
+            return conv2, mask2
 
         d_conv9, d_mask9 = decoder_layer(e_conv5, e_mask5, e_conv4, e_mask4, 512, 3)
-        d_conv10, d_mask10 = decoder_layer(d_conv9, d_mask9, e_conv3, e_mask3, 256, 3)
-        d_conv11, d_mask11 = decoder_layer(d_conv10, d_mask10, e_conv2, e_mask2, 128, 3)
-        d_conv12, d_mask12 = decoder_layer(d_conv11, d_mask11, e_conv1, e_mask1, 64, 3)
-        d_conv16, d_mask16 = decoder_layer(d_conv12, d_mask12, inputs_world, inputs_mask, 11, 3, bn=False)
-        outputs = Conv2D(11, 1, activation='sigmoid', name='outputs_world')(d_conv16)
+        d_conv10, d_mask10 = decoder_layer(d_conv9, d_mask9, e_conv3, e_mask3, 512, 3)
+        d_conv11, d_mask11 = decoder_layer(d_conv10, d_mask10, e_conv2, e_mask2, 256, 5)
+        d_conv12, d_mask12 = decoder_layer(d_conv11, d_mask11, e_conv1, e_mask1, 128, 5)
+        d_conv16, d_mask16 = decoder_layer(d_conv12, d_mask12, inputs_world, inputs_mask, 64, 7, bn=False)
+        outputs = Conv2D(11, 1, activation='sigmoid')(d_conv16)
 
         # Setup the model inputs / outputs
         model = Model(inputs=[inputs_world, inputs_mask], outputs=outputs)
@@ -126,7 +131,7 @@ class PConvUnet:
             l3 = self.loss_perceptual(dm_out, dm_gt, dm_comp)
             l4 = self.loss_style(dm_out, dm_gt)
             l5 = self.loss_style(dm_comp, dm_gt)
-            l6 = self.loss_tv(mask, y_comp)
+            l6 = 0  # self.loss_tv(mask, y_comp)
 
             # Return loss function
             return l1 + 6 * l2 + 0.05 * l3 + 120 * (l4 + l5) + 0.1 * l6
@@ -196,17 +201,6 @@ class PConvUnet:
             # After each epoch predict on test images & show them
             if plot_callback:
                 plot_callback(self.model)
-
-    def load(self, filepath, train_bn=True, lr=0.0002):
-
-        # Create UNet-like model
-        self.model = self.build_pconv_unet(train_bn, lr)
-
-        # Load weights into model
-        epoch = int(os.path.basename(filepath).split("_")[0])
-        assert epoch > 0, "Could not parse weight file. Should start with 'X_', with X being the epoch"
-        self.current_epoch = epoch
-        self.model.load_weights(filepath)
 
     @staticmethod
     def l1(y_true, y_pred):

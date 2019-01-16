@@ -3,6 +3,7 @@ import os
 import random
 
 import numpy as np
+import tensorflow as tf
 
 import ae
 import unet
@@ -74,7 +75,7 @@ def train(epochs, batch_size, world_count, version_name=None):
     # Load model
     print("Loading model...")
     feature_model = ae.autoencoder_model()
-    feature_model.load_weights('%s\\ae\\ver5\\models\\epoch30\\autoencoder.weights' % cur_dir)
+    feature_model.load_weights('%s\\ae\\ver5\\models\\epoch38\\autoencoder.weights' % cur_dir)
     feature_layers = [7, 14, 21]
 
     contextnet = unet.PConvUnet(feature_model, feature_layers, width=64, height=64, inference_only=False)
@@ -94,9 +95,9 @@ def train(epochs, batch_size, world_count, version_name=None):
     # tb_callback.set_model(pconv_unet)
 
     # before training init writer (for tensorboard log) / model
-    # tb_writer = tf.summary.FileWriter(logdir=graph_dir)
-    # ae_loss = tf.Summary()
-    # ae_loss.value.add(tag='ae_loss', simple_value=None)
+    tb_writer = tf.summary.FileWriter(logdir=graph_dir)
+    unet_loss_summary = tf.Summary()
+    unet_loss_summary.value.add(tag='unet_loss', simple_value=None)
 
     # Load Data
     cpu_count = multiprocessing.cpu_count()
@@ -109,6 +110,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
     for epoch in range(epochs):
 
+        print("Epoch = %s " % epoch)
         # Create directories for current epoch
         cur_worlds_cur = utils.check_or_create_local_path("epoch%s" % epoch, worlds_dir)
         cur_previews_dir = utils.check_or_create_local_path("epoch%s" % epoch, previews_dir)
@@ -125,23 +127,39 @@ def train(epochs, batch_size, world_count, version_name=None):
 
             loss = pconv_unet.train_on_batch(world_batch_masked, world_batch)
 
-            test = pconv_unet.predict(world_batch_masked)
+            unet_loss_summary.value[0].simple_value = loss / 1000.0  # Divide by 1000 for better Y-Axis values
+            tb_writer.add_summary(unet_loss_summary, (epoch * number_of_batches) + minibatch_index)
+            tb_writer.flush()
 
-            if minibatch_index == number_of_batches - 1:
+            print("epoch [%d/%d] :: batch [%d/%d] :: unet_loss = %f" % (
+                epoch, epochs, minibatch_index, number_of_batches, loss))
+
+            if minibatch_index % 1000 == 999 or minibatch_index == number_of_batches - 1:
+
+                # Save model
+                try:
+                    pconv_unet.save("%s\\unet.h5" % cur_models_dir)
+                    pconv_unet.save_weights("%s\\unet.weights" % cur_models_dir)
+                except ImportError:
+                    print("Failed to save data.")
+
+                # Save previews
+                test = pconv_unet.predict(world_batch_masked)
+
                 d0 = utils.decode_world2d_binary(world_batch[0])
-                utils.save_world_preview(block_images, d0, '%s\\inpainting_orig.png' % cur_dir)
+                utils.save_world_preview(block_images, d0, '%s\\inpainting_orig.png' % cur_previews_dir)
 
                 d1 = utils.decode_world2d_binary(test[0])
-                utils.save_world_preview(block_images, d1, '%s\\inpainting_fixed.png' % cur_dir)
+                utils.save_world_preview(block_images, d1, '%s\\inpainting_fixed.png' % cur_previews_dir)
 
                 d2 = utils.decode_world2d_binary(world_batch_masked[0][0])
-                utils.save_world_preview(block_images, d2, '%s\\inpainting_masked.png' % cur_dir)
+                utils.save_world_preview(block_images, d2, '%s\\inpainting_masked.png' % cur_previews_dir)
 
-            print("loss = %f" % loss)
+
 
 
 def main():
-    train(epochs=100, batch_size=64, world_count=10000)
+    train(epochs=50, batch_size=1, world_count=50000)
 
 
 if __name__ == "__main__":
