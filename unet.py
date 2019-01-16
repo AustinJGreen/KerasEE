@@ -11,26 +11,52 @@ from pconv_layer import PConv2D
 
 class PConvUnet:
 
-    def __init__(self, feature_model, width=64, height=64, inference_only=False):
+    def __init__(self, feature_model, feature_layers, width=64, height=64, inference_only=False):
         """Create the PConvUnet."""
 
         # Settings
         self.width = width
         self.height = height
-        self.discriminator_model = feature_model
+
         self.inference_only = inference_only
 
         # Set current epoch
         self.current_epoch = 0
 
+        # Layers to extract features from (first maxpooling layers)
+        self.feature_layers = feature_layers
+
+        self.features = self.build_feature_model(feature_model)
+
         # Create UNet-like model
         self.model = self.build_pconv_unet()
+
+    def build_feature_model(self, feature_model):
+        world = Input(shape=(self.width, self.height, 11))
+
+        # If inference only, just return empty model
+        if self.inference_only:
+            model = Model(inputs=world, outputs=[world for _ in range(len(self.feature_layers))])
+            model.trainable = False
+            model.compile(loss='mse', optimizer='adam')
+            return model
+
+        # Output the first three pooling layers
+        feature = feature_model
+        feature.outputs = [feature_model.layers[i].output for i in self.feature_layers]
+
+        # Create model and compile
+        model = Model(inputs=world, outputs=feature(world))
+        model.trainable = False
+        model.compile(loss='mse', optimizer='adam')
+
+        return model
 
     def build_pconv_unet(self, train_bn=True, lr=0.0002):
 
         # INPUTS
-        inputs_img = Input((self.width, self.height, 11), name='inputs_img')
-        inputs_mask = Input((self.width, self.height, 11), name='inputs_mask')
+        inputs_world = Input((64, 64, 11), name='inputs_world')
+        inputs_mask = Input((64, 64, 11), name='inputs_mask')
 
         # ENCODER
         def encoder_layer(img_in, mask_in, filters, kernel_size, bn=True):
@@ -43,14 +69,11 @@ class PConvUnet:
 
         encoder_layer.counter = 0
 
-        e_conv1, e_mask1 = encoder_layer(inputs_img, inputs_mask, 64, 7, bn=False)
+        e_conv1, e_mask1 = encoder_layer(inputs_world, inputs_mask, 64, 7, bn=False)
         e_conv2, e_mask2 = encoder_layer(e_conv1, e_mask1, 128, 5)
         e_conv3, e_mask3 = encoder_layer(e_conv2, e_mask2, 256, 5)
         e_conv4, e_mask4 = encoder_layer(e_conv3, e_mask3, 512, 3)
         e_conv5, e_mask5 = encoder_layer(e_conv4, e_mask4, 512, 3)
-        e_conv6, e_mask6 = encoder_layer(e_conv5, e_mask5, 512, 3)
-        e_conv7, e_mask7 = encoder_layer(e_conv6, e_mask6, 512, 3)
-        e_conv8, e_mask8 = encoder_layer(e_conv7, e_mask7, 512, 3)
 
         # DECODER
         def decoder_layer(img_in, mask_in, e_conv, e_mask, filters, kernel_size, bn=True):
@@ -64,18 +87,15 @@ class PConvUnet:
             conv = LeakyReLU(alpha=0.2)(conv)
             return conv, mask
 
-        d_conv9, d_mask9 = decoder_layer(e_conv8, e_mask8, e_conv7, e_mask7, 512, 3)
-        d_conv10, d_mask10 = decoder_layer(d_conv9, d_mask9, e_conv6, e_mask6, 512, 3)
-        d_conv11, d_mask11 = decoder_layer(d_conv10, d_mask10, e_conv5, e_mask5, 512, 3)
-        d_conv12, d_mask12 = decoder_layer(d_conv11, d_mask11, e_conv4, e_mask4, 512, 3)
-        d_conv13, d_mask13 = decoder_layer(d_conv12, d_mask12, e_conv3, e_mask3, 256, 3)
-        d_conv14, d_mask14 = decoder_layer(d_conv13, d_mask13, e_conv2, e_mask2, 128, 3)
-        d_conv15, d_mask15 = decoder_layer(d_conv14, d_mask14, e_conv1, e_mask1, 64, 3)
-        d_conv16, d_mask16 = decoder_layer(d_conv15, d_mask15, inputs_img, inputs_mask, 3, 3, bn=False)
-        outputs = Conv2D(3, 1, activation='sigmoid', name='outputs_world')(d_conv16)
+        d_conv9, d_mask9 = decoder_layer(e_conv5, e_mask5, e_conv4, e_mask4, 512, 3)
+        d_conv10, d_mask10 = decoder_layer(d_conv9, d_mask9, e_conv3, e_mask3, 256, 3)
+        d_conv11, d_mask11 = decoder_layer(d_conv10, d_mask10, e_conv2, e_mask2, 128, 3)
+        d_conv12, d_mask12 = decoder_layer(d_conv11, d_mask11, e_conv1, e_mask1, 64, 3)
+        d_conv16, d_mask16 = decoder_layer(d_conv12, d_mask12, inputs_world, inputs_mask, 11, 3, bn=False)
+        outputs = Conv2D(11, 1, activation='sigmoid', name='outputs_world')(d_conv16)
 
         # Setup the model inputs / outputs
-        model = Model(inputs=[inputs_img, inputs_mask], outputs=outputs)
+        model = Model(inputs=[inputs_world, inputs_mask], outputs=outputs)
 
         # Compile the model
         model.compile(
@@ -95,10 +115,10 @@ class PConvUnet:
             # Compute predicted image with non-hole pixels set to ground truth
             y_comp = mask * y_true + (1 - mask) * y_pred
 
-            # Compute the discriminator_model features
-            dm_out = self.discriminator_model(y_pred)
-            dm_gt = self.discriminator_model(y_true)
-            dm_comp = self.discriminator_model(y_comp)
+            # Compute the features
+            dm_out = self.features(y_pred)
+            dm_gt = self.features(y_true)
+            dm_comp = self.features(y_comp)
 
             # Compute loss components
             l1 = self.loss_valid(mask, y_true, y_pred)

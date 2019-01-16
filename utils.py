@@ -4,7 +4,6 @@ import os
 from random import randint
 from shutil import copyfile
 
-import cv2
 import numpy as np
 from PIL import Image
 
@@ -52,37 +51,41 @@ def load_encoding_dict(name):
     return block_forward_dict, block_backward_dict
 
 
-def random_mask(height, width, channels=11):
-    """Generates a random irregular mask with lines, circles and elipses"""
-    img = np.zeros((height, width, channels), np.uint8)
+def trapez(y, y0, w):
+    return np.clip(np.minimum(y + 1 + w / 2 - y0, -y + 1 + w / 2 + y0), 0, 1)
 
-    # Set size scale
-    size = int((width + height) * 0.03)
-    if width < 64 or height < 64:
-        raise Exception("Width and Height of mask must be at least 64!")
+
+def random_mask(height, width, channels=11):
+    """Generates a random irregular mask based off of rectangles"""
+    mask = np.zeros((height, width, channels), np.int8)
 
     # Draw random lines
-    for _ in range(randint(1, 20)):
-        x1, x2 = randint(1, width), randint(1, width)
-        y1, y2 = randint(1, height), randint(1, height)
-        thickness = randint(3, size)
-        cv2.line(img, (x1, y1), (x2, y2), (1, 1, 1), thickness)
+    x1 = randint(1, width - 25)
+    width = randint(24, min(24, width - x1))
+    x2 = x1 + width
 
-    # Draw random circles
-    for _ in range(randint(1, 20)):
-        x1, y1 = randint(1, width), randint(1, height)
-        radius = randint(3, size)
-        cv2.circle(img, (x1, y1), radius, (1, 1, 1), -1)
+    y1 = randint(1, height - 25)
+    height = randint(24, min(24, height - x1))
+    y2 = y1 + height
 
-    # Draw random ellipses
-    for _ in range(randint(1, 20)):
-        x1, y1 = randint(1, width), randint(1, height)
-        s1, s2 = randint(1, width), randint(1, height)
-        a1, a2, a3 = randint(3, 180), randint(3, 180), randint(3, 180)
-        thickness = randint(3, size)
-        cv2.ellipse(img, (x1, y1), (s1, s2), a1, a2, a3, (1, 1, 1), thickness)
+    mask[x1:x2, y1:y2, :] = 1
 
-    return 1 - img
+    return 1 - mask
+
+
+def mask_batch(batch):
+    masked = np.empty(batch.shape, dtype=np.int8)
+    masks = np.empty(batch.shape, dtype=np.int8)
+
+    batch_size = batch.shape[0]
+    for i in range(batch_size):
+        world_masked = np.copy(batch[i])
+        mask = random_mask(world_masked.shape[0], world_masked.shape[1], world_masked.shape[2])
+        world_masked[mask == 0] = 1
+        masked[i] = world_masked
+        masks[i] = mask
+
+    return [masked, masks]
 
 
 def decode_world2d(block_backward_dict, world_data):

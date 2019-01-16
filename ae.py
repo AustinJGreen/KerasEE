@@ -175,7 +175,7 @@ def train(epochs, batch_size, world_count, version_name=None):
     utils.delete_files_in_path(worlds_dir)
     utils.delete_files_in_path(previews_dir)
 
-    # print("Saving model images...")
+    print("Saving model images...")
     keras.utils.plot_model(ae, to_file="%s\\autoencoder.png" % version_dir, show_shapes=True, show_layer_names=True)
 
     # Set up tensorboard
