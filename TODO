@@ -1,0 +1,4 @@
+-Train VAE
+-Use features from VAE to train unet
+-Revert gan.py lol
+-Use dictionaries again to compact block lists and remove unnecessary blocks like BG blocks to save space (less bits)

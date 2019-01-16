@@ -5,7 +5,6 @@ import random
 import keras
 import numpy as np
 import tensorflow as tf
-from keras import backend as K
 from keras.layers import Dense
 from keras.layers import Reshape
 from keras.layers import SpatialDropout2D
@@ -45,11 +44,13 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
         world_index = 0
         for thread in range(thread_count):
             threads[thread].join()
-
+            print("Thread %s joined." % thread)
             thread_load_queue = threads[thread].get_worlds()
+            print("Adding worlds to list from thread %s queue." % thread)
             while thread_load_queue.qsize() > 0:
                 world_array[world_index] = thread_load_queue.get()
                 world_index += 1
+            print("Done adding worlds to list from thread.")
 
     return world_array
 
@@ -145,6 +146,7 @@ def discriminator_model():
     return model
 
 
+
 def generator_containing_discriminator(g, d):
     model = Sequential()
     model.add(g)
@@ -195,7 +197,7 @@ def train(epochs, batch_size, world_count, version_name=None):
         g.load_weights("%s\\generator.model" % version_dir)
 
     print("Compiling model...")
-    d_optim = Adam(lr=0.00002)
+    d_optim = Adam(lr=0.00001)
     g_optim = Adam(lr=0.0001, beta_1=0.5)
 
     d = discriminator_model()
@@ -241,14 +243,10 @@ def train(epochs, batch_size, world_count, version_name=None):
     cpu_count = multiprocessing.cpu_count()
     utilization_count = cpu_count - 1
     print("Loading worlds using %s cores." % utilization_count)
-    x_train = load_worlds(world_count, "%s\\WorldRepo3\\" % cur_dir, 64, 64, minimap_values,
-                          utilization_count)
+    x_train = load_worlds(world_count, "%s\\WorldRepo4\\" % cur_dir, 64, 64, minimap_values, utilization_count)
 
     # Start Training loop
-    number_of_batches = int(world_count / batch_size)
-
-    # Initialize tables for Hashtable tensors
-    K.get_session().run(tf.tables_initializer())
+    number_of_batches = world_count // batch_size
 
     for epoch in range(epochs):
 
@@ -344,11 +342,10 @@ def train(epochs, batch_size, world_count, version_name=None):
                     g.save_weights("%s\\generator.weights" % cur_models_dir)
                 except ImportError:
                     print("Failed to save data.")
-                    pass
 
 
 def main():
-    train(epochs=100, batch_size=64, world_count=50000)
+    train(epochs=100, batch_size=32, world_count=50000)
 
 
 if __name__ == "__main__":

@@ -11,12 +11,13 @@ from pconv_layer import PConv2D
 
 class PConvUnet:
 
-    def __init__(self, img_rows=200, img_cols=200, inference_only=False):
-        """Create the PConvUnet. If variable image size, set img_rows and img_cols to None"""
+    def __init__(self, feature_model, width=64, height=64, inference_only=False):
+        """Create the PConvUnet."""
 
         # Settings
-        self.img_rows = img_rows
-        self.img_cols = img_cols
+        self.width = width
+        self.height = height
+        self.discriminator_model = feature_model
         self.inference_only = inference_only
 
         # Set current epoch
@@ -28,8 +29,8 @@ class PConvUnet:
     def build_pconv_unet(self, train_bn=True, lr=0.0002):
 
         # INPUTS
-        inputs_img = Input((self.img_rows, self.img_cols, 3), name='inputs_img')
-        inputs_mask = Input((self.img_rows, self.img_cols, 3), name='inputs_mask')
+        inputs_img = Input((self.width, self.height, 11), name='inputs_img')
+        inputs_mask = Input((self.width, self.height, 11), name='inputs_mask')
 
         # ENCODER
         def encoder_layer(img_in, mask_in, filters, kernel_size, bn=True):
@@ -71,7 +72,7 @@ class PConvUnet:
         d_conv14, d_mask14 = decoder_layer(d_conv13, d_mask13, e_conv2, e_mask2, 128, 3)
         d_conv15, d_mask15 = decoder_layer(d_conv14, d_mask14, e_conv1, e_mask1, 64, 3)
         d_conv16, d_mask16 = decoder_layer(d_conv15, d_mask15, inputs_img, inputs_mask, 3, 3, bn=False)
-        outputs = Conv2D(3, 1, activation='sigmoid', name='outputs_img')(d_conv16)
+        outputs = Conv2D(3, 1, activation='sigmoid', name='outputs_world')(d_conv16)
 
         # Setup the model inputs / outputs
         model = Model(inputs=[inputs_img, inputs_mask], outputs=outputs)
@@ -94,17 +95,17 @@ class PConvUnet:
             # Compute predicted image with non-hole pixels set to ground truth
             y_comp = mask * y_true + (1 - mask) * y_pred
 
-            # Compute the vgg features
-            vgg_out = self.vgg(y_pred)
-            vgg_gt = self.vgg(y_true)
-            vgg_comp = self.vgg(y_comp)
+            # Compute the discriminator_model features
+            dm_out = self.discriminator_model(y_pred)
+            dm_gt = self.discriminator_model(y_true)
+            dm_comp = self.discriminator_model(y_comp)
 
             # Compute loss components
             l1 = self.loss_valid(mask, y_true, y_pred)
             l2 = self.loss_hole(mask, y_true, y_pred)
-            l3 = self.loss_perceptual(vgg_out, vgg_gt, vgg_comp)
-            l4 = self.loss_style(vgg_out, vgg_gt)
-            l5 = self.loss_style(vgg_comp, vgg_gt)
+            l3 = self.loss_perceptual(dm_out, dm_gt, dm_comp)
+            l4 = self.loss_style(dm_out, dm_gt)
+            l5 = self.loss_style(dm_comp, dm_gt)
             l6 = self.loss_tv(mask, y_comp)
 
             # Return loss function
@@ -143,11 +144,11 @@ class PConvUnet:
 
         # Cast values to be [0., 1.], and compute dilated hole region of y_comp
         dilated_mask = K.cast(K.greater(dilated_mask, 0), 'float32')
-        P = dilated_mask * y_comp
+        p = dilated_mask * y_comp
 
         # Calculate total variation loss
-        a = self.l1(P[:, 1:, :, :], P[:, :-1, :, :])
-        b = self.l1(P[:, :, 1:, :], P[:, :, :-1, :])
+        a = self.l1(p[:, 1:, :, :], p[:, :-1, :, :])
+        b = self.l1(p[:, :, 1:, :], p[:, :, :-1, :])
         return a + b
 
     def fit(self, generator, epochs=10, plot_callback=None, *args, **kwargs):
@@ -175,10 +176,6 @@ class PConvUnet:
             # After each epoch predict on test images & show them
             if plot_callback:
                 plot_callback(self.model)
-
-            # Save logfile
-            if self.weight_filepath:
-                self.save()
 
     def load(self, filepath, train_bn=True, lr=0.0002):
 

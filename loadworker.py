@@ -4,7 +4,6 @@ from multiprocessing import Process
 
 import numpy as np
 
-import blocks
 import utils
 
 
@@ -50,20 +49,17 @@ class GanWorldLoader(Process):
     def is_good_world(cross_section):
         # Count blocks?
         # Count action blocks?
-        action_blocks = 0
-        solid_blocks = 0
+        edited_blocks = 0
         width = cross_section.shape[0]
         height = cross_section.shape[1]
         for x in range(width):
             for y in range(height):
                 block = cross_section[x, y]
-                if blocks.is_solid(block):
-                    solid_blocks += 1
-                elif blocks.is_action(block):
-                    action_blocks += 1
+                if block != 0:
+                    edited_blocks += 1
 
         total_size = width * height
-        return solid_blocks >= 0.25 * total_size and 0.05 * total_size <= action_blocks
+        return edited_blocks >= 0.4 * total_size
 
     def load_world(self, world_file):
         world = utils.load_world_data_ver3(world_file)
@@ -150,6 +146,7 @@ class GanWorldLoader(Process):
             print("Loaded (%s/%s) %s" % (self.worldCounter.value, self.targetCount, time_est_str))
             if self.worldCounter.value >= self.targetCount:
                 break
+        print("Done loading.")
 
     def get_worlds(self):
         return self.loadQueue

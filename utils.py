@@ -1,8 +1,10 @@
 import gzip
 import math
 import os
+from random import randint
 from shutil import copyfile
 
+import cv2
 import numpy as np
 from PIL import Image
 
@@ -48,6 +50,39 @@ def load_encoding_dict(name):
             line = fp.readline()
     assert len(block_forward_dict) == len(block_backward_dict)
     return block_forward_dict, block_backward_dict
+
+
+def random_mask(height, width, channels=11):
+    """Generates a random irregular mask with lines, circles and elipses"""
+    img = np.zeros((height, width, channels), np.uint8)
+
+    # Set size scale
+    size = int((width + height) * 0.03)
+    if width < 64 or height < 64:
+        raise Exception("Width and Height of mask must be at least 64!")
+
+    # Draw random lines
+    for _ in range(randint(1, 20)):
+        x1, x2 = randint(1, width), randint(1, width)
+        y1, y2 = randint(1, height), randint(1, height)
+        thickness = randint(3, size)
+        cv2.line(img, (x1, y1), (x2, y2), (1, 1, 1), thickness)
+
+    # Draw random circles
+    for _ in range(randint(1, 20)):
+        x1, y1 = randint(1, width), randint(1, height)
+        radius = randint(3, size)
+        cv2.circle(img, (x1, y1), radius, (1, 1, 1), -1)
+
+    # Draw random ellipses
+    for _ in range(randint(1, 20)):
+        x1, y1 = randint(1, width), randint(1, height)
+        s1, s2 = randint(1, width), randint(1, height)
+        a1, a2, a3 = randint(3, 180), randint(3, 180), randint(3, 180)
+        thickness = randint(3, size)
+        cv2.ellipse(img, (x1, y1), (s1, s2), a1, a2, a3, (1, 1, 1), thickness)
+
+    return 1 - img
 
 
 def decode_world2d(block_backward_dict, world_data):
@@ -427,7 +462,7 @@ def rotate_world90(world_data):
     world_width = world_data.shape[0]
     world_height = world_data.shape[1]
 
-    rotated_world = np.zeros((world_width, world_height), dtype=int)
+    rotated_world = np.zeros((world_width, world_height), dtype=world_data.dtype)
     for y in range(world_height):
         for x in range(world_width):
             cur_id = world_data[x, y]
@@ -439,3 +474,23 @@ def rotate_world90(world_data):
             rotated_world[transformed_x, transformed_y] = rot_id
 
     return rotated_world
+
+
+def save_train_data(train_data, block_images, dir):
+    for i in range(train_data.shape[0]):
+        decoded_world = decode_world2d_binary(train_data[i])
+        save_world_preview(block_images, decoded_world, '%s\\image%s.png' % (dir, i))
+
+
+def save_world_repo_previews(world_repo, output_dir):
+    block_images = load_block_images()
+
+    cur_dir = os.getcwd()
+    repo_dir = '%s\\%s' % (cur_dir, world_repo)
+    for world_name in os.listdir(repo_dir):
+        world_file = '%s\\%s' % (repo_dir, world_name)
+        dest_file = '%s\\%s.png' % (output_dir, world_name)
+        if not os.path.exists(dest_file):
+            world_data = load_world_data_ver3(world_file)
+            if world_data.shape[0] >= 100 and world_data.shape[1] >= 100:
+                save_world_preview(block_images, world_data, dest_file)
