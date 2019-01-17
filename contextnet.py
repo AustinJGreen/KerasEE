@@ -158,7 +158,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
 
 def main():
-    train(epochs=50, batch_size=1, world_count=1000)
+    train(epochs=100, batch_size=1, world_count=75000)
 
 
 if __name__ == "__main__":

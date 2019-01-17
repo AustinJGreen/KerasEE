@@ -4,6 +4,7 @@ import time
 from threading import Lock
 
 import numpy as np
+import tensorflow as tf
 
 import ae
 import contextbot.initparse
@@ -71,7 +72,9 @@ def build_for(r, player_id):
     encoded_input = utils.encode_world2d_binary(input_data)
     encoded_input[input_mask == 0] = 1
 
-    encoded_context_data = pconv_unet.predict([[encoded_input], [input_mask]])
+    encoded_context_data = None
+    with graph.as_default():
+        encoded_context_data = pconv_unet.predict([[encoded_input], [input_mask]])
 
     context_data = utils.decode_world2d_binary(encoded_context_data[0])
     utils.save_world_preview(block_images, context_data, '%s\\real.png' % cur_dir)
@@ -84,7 +87,7 @@ def build_for(r, player_id):
                 world_y = y + world_y1
                 if world_data[world_x, world_y, 0].Id != block_id:
                     r.send('b', 0, world_x, world_y, block_id)
-                    time.sleep(50 / 1000.0)
+                    time.sleep(25 / 1000.0)
 
 
 @EventHandler.add('init')
@@ -147,7 +150,7 @@ def on_disconnect(r, disconnect_message):
 print("Logging in...")
 username = None
 password = None
-with open("./ugp.txt") as fp:
+with open("./ugp") as fp:
     line = fp.readline()
     spl = line.split(' ')
     username = spl[0]
@@ -178,14 +181,8 @@ feature_layers = [7, 14, 21]
 print("Loading context model...")
 contextnet = unet.PConvUnet(feature_model, feature_layers, width=64, height=64, inference_only=False)
 pconv_unet = contextnet.build_pconv_unet(train_bn=False, lr=0.0001)
-pconv_unet.load_weights('%s\\contextnet\\ver43\\models\\epoch4\\unet.weights' % cur_dir)
-# graph = tf.get_default_graph()
-
-for x in range(70, 94):
-    for y in range(120, 144):
-        build_queue.append((0, x, y))
-
-build_for(bot_room, 0)
+pconv_unet.load_weights('%s\\contextnet\\ver52\\models\\epoch5\\unet.weights' % cur_dir)
+graph = tf.get_default_graph()
 
 print("Done loading model.")
 init_lock = Lock()

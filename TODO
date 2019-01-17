@@ -4,3 +4,4 @@ X-Revert gan.py lol
 X-Use dictionaries again to compact block lists and remove unnecessary blocks like BG blocks to save space (less bits)
 X-Combine output with original from contextnet
 X-Experiment with removing certain losses
+O-Add my own worlds to WorldRepo :D
