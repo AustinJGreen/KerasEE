@@ -124,15 +124,6 @@ def train(epochs, batch_size, world_count, version_name=None):
             world_batch = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
             world_batch_masked = utils.mask_batch(world_batch)
 
-            loss = pconv_unet.train_on_batch(world_batch_masked, world_batch)
-
-            unet_loss_summary.value[0].simple_value = loss / 1000.0  # Divide by 1000 for better Y-Axis values
-            tb_writer.add_summary(unet_loss_summary, (epoch * number_of_batches) + minibatch_index)
-            tb_writer.flush()
-
-            print("epoch [%d/%d] :: batch [%d/%d] :: unet_loss = %f" % (
-                epoch, epochs, minibatch_index, number_of_batches, loss))
-
             if minibatch_index % 1000 == 999 or minibatch_index == number_of_batches - 1:
 
                 # Save model
@@ -153,6 +144,17 @@ def train(epochs, batch_size, world_count, version_name=None):
 
                 d2 = utils.decode_world2d_binary(world_batch_masked[0][0])
                 utils.save_world_preview(block_images, d2, '%s\\%s_masked.png' % (cur_previews_dir, minibatch_index))
+
+            loss = pconv_unet.train_on_batch(world_batch_masked, world_batch)
+
+            unet_loss_summary.value[0].simple_value = loss / 1000.0  # Divide by 1000 for better Y-Axis values
+            tb_writer.add_summary(unet_loss_summary, (epoch * number_of_batches) + minibatch_index)
+            tb_writer.flush()
+
+            print("epoch [%d/%d] :: batch [%d/%d] :: unet_loss = %f" % (
+                epoch, epochs, minibatch_index, number_of_batches, loss))
+
+
 
 
 def main():
