@@ -1,6 +1,6 @@
 X-Train VAE
 X-Use features from VAE to train unet
 X-Revert gan.py lol
-O-Use dictionaries again to compact block lists and remove unnecessary blocks like BG blocks to save space (less bits)
-O-Combine output with original from contextnet
-O-Experiment with removing certain losses
+X-Use dictionaries again to compact block lists and remove unnecessary blocks like BG blocks to save space (less bits)
+X-Combine output with original from contextnet
+X-Experiment with removing certain losses

@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import random
 
+import keras
 import numpy as np
 import tensorflow as tf
 
@@ -49,13 +50,13 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
 
 def train(epochs, batch_size, world_count, version_name=None):
     cur_dir = os.getcwd()
-    gan_dir = utils.check_or_create_local_path("contextnet")
+    contextnet_dir = utils.check_or_create_local_path("contextnet")
 
     if version_name is None:
-        latest = utils.get_latest_version(gan_dir)
+        latest = utils.get_latest_version(contextnet_dir)
         version_name = "ver%s" % (latest + 1)
 
-    version_dir = utils.check_or_create_local_path(version_name, gan_dir)
+    version_dir = utils.check_or_create_local_path(version_name, contextnet_dir)
     graph_dir = utils.check_or_create_local_path("graph", version_dir)
     worlds_dir = utils.check_or_create_local_path("worlds", version_dir)
     previews_dir = utils.check_or_create_local_path("previews", version_dir)
@@ -80,21 +81,19 @@ def train(epochs, batch_size, world_count, version_name=None):
 
     contextnet = unet.PConvUnet(feature_model, feature_layers, width=64, height=64, inference_only=False)
     pconv_unet = contextnet.build_pconv_unet(train_bn=True, lr=0.0001)
+    pconv_unet.load_weights('%s\\ver43\\models\\epoch4\\unet.weights' % contextnet_dir)
 
     # Delete existing worlds and previews if any
     print("Checking for old generated data...")
     utils.delete_files_in_path(worlds_dir)
     utils.delete_files_in_path(previews_dir)
 
-    # print("Saving model images...")
-    # keras.utils.plot_model(pconv_unet, to_file="%s\\autoencoder.png" % version_dir, show_shapes=True, show_layer_names=True)
+    print("Saving model images...")
+    keras.utils.plot_model(pconv_unet, to_file="%s\\autoencoder.png" % version_dir, show_shapes=True,
+                           show_layer_names=True)
 
     # Set up tensorboard
-    # print("Setting up tensorboard...")
-    # tb_callback = keras.callbacks.TensorBoard(log_dir=graph_dir, write_graph=True)
-    # tb_callback.set_model(pconv_unet)
-
-    # before training init writer (for tensorboard log) / model
+    print("Setting up tensorboard...")
     tb_writer = tf.summary.FileWriter(logdir=graph_dir)
     unet_loss_summary = tf.Summary()
     unet_loss_summary.value.add(tag='unet_loss', simple_value=None)
@@ -147,19 +146,17 @@ def train(epochs, batch_size, world_count, version_name=None):
                 test = pconv_unet.predict(world_batch_masked)
 
                 d0 = utils.decode_world2d_binary(world_batch[0])
-                utils.save_world_preview(block_images, d0, '%s\\inpainting_orig.png' % cur_previews_dir)
+                utils.save_world_preview(block_images, d0, '%s\\%s_orig.png' % (cur_previews_dir, minibatch_index))
 
                 d1 = utils.decode_world2d_binary(test[0])
-                utils.save_world_preview(block_images, d1, '%s\\inpainting_fixed.png' % cur_previews_dir)
+                utils.save_world_preview(block_images, d1, '%s\\%s_fixed.png' % (cur_previews_dir, minibatch_index))
 
                 d2 = utils.decode_world2d_binary(world_batch_masked[0][0])
-                utils.save_world_preview(block_images, d2, '%s\\inpainting_masked.png' % cur_previews_dir)
-
-
+                utils.save_world_preview(block_images, d2, '%s\\%s_masked.png' % (cur_previews_dir, minibatch_index))
 
 
 def main():
-    train(epochs=50, batch_size=1, world_count=50000)
+    train(epochs=50, batch_size=1, world_count=1000)
 
 
 if __name__ == "__main__":

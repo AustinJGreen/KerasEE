@@ -6,6 +6,8 @@ from shutil import copyfile
 
 import numpy as np
 from PIL import Image
+from skimage.draw import ellipse
+from skimage.draw import line
 
 import blocks
 
@@ -58,17 +60,35 @@ def trapez(y, y0, w):
 def random_mask(height, width, channels=11):
     """Generates a random irregular mask based off of rectangles"""
     mask = np.zeros((height, width, channels), np.int8)
+    img = np.zeros((height, width, 3), np.int8)
 
-    # Draw random lines
-    x1 = randint(1, width - 25)
-    width = randint(24, min(24, width - x1))
-    x2 = x1 + width
+    # Random rectangles
+    for i in range(randint(1, 2)):
+        x1 = randint(1, width - 25)
+        x_width = randint(5, min(24, width - x1))
+        x2 = x1 + x_width
 
-    y1 = randint(1, height - 25)
-    height = randint(24, min(24, height - x1))
-    y2 = y1 + height
+        y1 = randint(1, height - 25)
+        y_height = randint(5, min(24, height - y1))
+        y2 = y1 + y_height
 
-    mask[x1:x2, y1:y2, :] = 1
+        mask[x1:x2, y1:y2, :] = 1
+
+    # Random circles
+    for j in range(randint(1, 2)):
+        x1 = randint(1, width - 25)
+        x_width = randint(5, min(24, width - x1))
+        y1 = randint(1, height - 25)
+        y_height = randint(5, min(24, height - y1))
+        rr, cc = ellipse(y1, x1, y_height, x_width)
+        mask[cc, rr, :] = 1
+
+    # Random lines
+    for j in range(randint(10, 20)):
+        x1, x2 = randint(1, width - 1), randint(1, width - 1)
+        y1, y2 = randint(1, height - 1), randint(1, height - 1)
+        rr, cc = line(y1, x1, y2, x2)
+        mask[cc, rr, :] = 1
 
     return 1 - mask
 
@@ -102,7 +122,7 @@ def decode_world2d(block_backward_dict, world_data):
 def decode_world2d_binary(world_data):
     width = world_data.shape[0]
     height = world_data.shape[1]
-    world_copy = np.zeros((width, height), dtype=float)
+    world_copy = np.zeros((width, height), dtype=int)
     for y in range(height):
         for x in range(width):
             value = 0
@@ -112,7 +132,7 @@ def decode_world2d_binary(world_data):
                 if bit_data >= 0.5:
                     bit_value = 1
                 value = value | (bit_value << (10 - bit))
-            world_copy[x, y] = value
+            world_copy[x, y] = int(value)
     return world_copy
 
 
