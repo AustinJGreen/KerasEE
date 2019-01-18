@@ -1,10 +1,49 @@
 import math
+import os
+import random
 import time
-from multiprocessing import Process
+from multiprocessing import Process, Manager, Value, Lock
 
 import numpy as np
 
 from src import utils
+
+
+def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_values, block_forward, thread_count):
+    world_names = os.listdir(world_directory)
+    random.shuffle(world_names)
+
+    with Manager() as manager:
+        file_queue = manager.Queue()
+
+        for name in world_names:
+            file_queue.put(world_directory + name)
+
+        world_array = np.zeros((load_count, gen_width, gen_height, 10), dtype=np.int8)
+
+        world_counter = Value('i', 0)
+        thread_lock = Lock()
+
+        threads = [None] * thread_count
+        for thread in range(thread_count):
+            load_thread = GanWorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_width,
+                                         gen_height, block_forward, minimap_values)
+            load_thread.start()
+            threads[thread] = load_thread
+
+        world_index = 0
+        for thread in range(thread_count):
+            threads[thread].join()
+            print("Thread %s joined." % thread)
+            thread_load_queue = threads[thread].get_worlds()
+            print("Adding worlds to list from thread %s queue." % thread)
+            while thread_load_queue.qsize() > 0:
+                world_array[world_index] = thread_load_queue.get()
+                world_index += 1
+            print("Done adding worlds to list from thread.")
+
+        world_array = world_array[:world_index, :, :, :]
+    return world_array
 
 
 class GanWorldLoader(Process):

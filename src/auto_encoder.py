@@ -1,6 +1,5 @@
 import multiprocessing
 import os
-import random
 
 import keras
 import numpy as np
@@ -13,43 +12,7 @@ from keras.models import Sequential, load_model
 from keras.optimizers import Adam
 
 from src import utils
-from src.loadworker import GanWorldLoader
-
-
-def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_values, block_forward, thread_count):
-    world_names = os.listdir(world_directory)
-    random.shuffle(world_names)
-
-    with multiprocessing.Manager() as manager:
-        file_queue = manager.Queue()
-
-        for name in world_names:
-            file_queue.put(world_directory + name)
-
-        world_array = np.zeros((load_count, gen_width, gen_height, 10), dtype=np.int8)
-
-        world_counter = multiprocessing.Value('i', 0)
-        thread_lock = multiprocessing.Lock()
-
-        threads = [None] * thread_count
-        for thread in range(thread_count):
-            load_thread = GanWorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_width,
-                                         gen_height, block_forward, minimap_values)
-            load_thread.start()
-            threads[thread] = load_thread
-
-        world_index = 0
-        for thread in range(thread_count):
-            threads[thread].join()
-            print("Thread %s joined." % thread)
-            thread_load_queue = threads[thread].get_worlds()
-            print("Adding worlds to list from thread %s queue." % thread)
-            while thread_load_queue.qsize() > 0:
-                world_array[world_index] = thread_load_queue.get()
-                world_index += 1
-            print("Done adding worlds to list from thread.")
-
-    return world_array
+from src.loadworker import load_worlds
 
 
 def autoencoder_model():
@@ -202,7 +165,7 @@ def train(epochs, batch_size, world_count, version_name=None):
                           utilization_count)
 
     # Start Training loop
-    number_of_batches = world_count // batch_size
+    number_of_batches = (world_count - (world_count % batch_size)) // batch_size
 
     for epoch in range(epochs):
 
