@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 import utils
 import auto_encoder
-import unet
+from unet import PConvUnet
 from loadworker import load_worlds
 
 
@@ -14,7 +14,7 @@ def train(epochs, batch_size, world_count, version_name=None):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
-    model_dir = utils.check_or_create_local_path("auto_encoder", all_models_dir)
+    model_dir = utils.check_or_create_local_path("inpainting", all_models_dir)
 
     utils.delete_empty_versions(model_dir)
     if version_name is None:
@@ -49,9 +49,9 @@ def train(epochs, batch_size, world_count, version_name=None):
     feature_model.load_weights('%s\\auto_encoder\\ver12\\models\\epoch38\\autoencoder.weights' % all_models_dir)
     feature_layers = [7, 14, 21]
 
-    contextnet = unet.PConvUnet(feature_model, feature_layers, width=64, height=64, inference_only=False)
-    pconv_unet = contextnet.build_pconv_unet(train_bn=True, lr=0.0001)
-    pconv_unet.summary()
+    contextnet = PConvUnet(feature_model, feature_layers, width=64, height=64, inference_only=False)
+    unet = contextnet.build_pconv_unet(train_bn=True, lr=0.0001)
+    unet.summary()
     # pconv_unet.load_weights('%s\\ver43\\models\\epoch4\\unet.weights' % contextnet_dir)
 
     # Delete existing worlds and previews if any
@@ -60,7 +60,7 @@ def train(epochs, batch_size, world_count, version_name=None):
     utils.delete_files_in_path(previews_dir)
 
     print("Saving model images...")
-    keras.utils.plot_model(pconv_unet, to_file="%s\\autoencoder.png" % version_dir, show_shapes=True,
+    keras.utils.plot_model(unet, to_file="%s\\unet.png" % version_dir, show_shapes=True,
                            show_layer_names=True)
 
     # Set up tensorboard
@@ -100,13 +100,13 @@ def train(epochs, batch_size, world_count, version_name=None):
 
                 # Save model
                 try:
-                    pconv_unet.save("%s\\unet.h5" % cur_models_dir)
-                    pconv_unet.save_weights("%s\\unet.weights" % cur_models_dir)
+                    unet.save("%s\\unet.h5" % cur_models_dir)
+                    unet.save_weights("%s\\unet.weights" % cur_models_dir)
                 except ImportError:
                     print("Failed to save data.")
 
                 # Save previews
-                test = pconv_unet.predict(world_batch_masked)
+                test = unet.predict(world_batch_masked)
 
                 d0 = utils.decode_world2d_binary(block_backward, world_batch[0])
                 utils.save_world_preview(block_images, d0, '%s\\%s_orig.png' % (cur_previews_dir, minibatch_index))
@@ -117,7 +117,7 @@ def train(epochs, batch_size, world_count, version_name=None):
                 d2 = utils.decode_world2d_binary(block_backward, world_batch_masked[0][0])
                 utils.save_world_preview(block_images, d2, '%s\\%s_masked.png' % (cur_previews_dir, minibatch_index))
 
-            loss = pconv_unet.train_on_batch(world_batch_masked, world_batch)
+            loss = unet.train_on_batch(world_batch_masked, world_batch)
 
             unet_loss_summary.value[0].simple_value = loss / 1000.0  # Divide by 1000 for better Y-Axis values
             tb_writer.add_summary(unet_loss_summary, (epoch * number_of_batches) + minibatch_index)
