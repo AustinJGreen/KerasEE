@@ -97,7 +97,7 @@ class PConvUnet:
         d_conv11, d_mask11 = decoder_layer(d_conv10, d_mask10, e_conv2, e_mask2, 256, 5)
         d_conv12, d_mask12 = decoder_layer(d_conv11, d_mask11, e_conv1, e_mask1, 128, 5)
         d_conv16, d_mask16 = decoder_layer(d_conv12, d_mask12, inputs_world, inputs_mask, 64, 7, bn=False)
-        outputs = Conv2D(11, 1, activation='sigmoid')(d_conv16)
+        outputs = Conv2D(10, 1, activation='sigmoid')(d_conv16)
 
         # Setup the model inputs / outputs
         model = Model(inputs=[inputs_world, inputs_mask], outputs=outputs)

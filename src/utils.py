@@ -472,9 +472,28 @@ def delete_files_in_path(path):
             if os.path.isfile(file_path):
                 os.unlink(file_path)
             elif os.path.isdir(file_path):
+                delete_files_in_path(file_path)
                 os.rmdir(file_path)
         except:
             pass
+
+
+def delete_empty_versions(base_dir):
+    # Loop through versions
+    dir_list = os.listdir(base_dir)
+    for ver in dir_list:
+        if ver != 'graph':
+            version_dir = os.path.join(base_dir, ver)
+            graph_ver_dir = os.path.join(base_dir, 'graph', ver)
+
+            if not os.path.exists(graph_ver_dir) or len(os.listdir(graph_ver_dir)) <= 1:  # 1 is just model in graph
+                # Delete both directories
+                delete_files_in_path(version_dir)
+                os.rmdir(version_dir)
+
+                if os.path.exists(graph_ver_dir):
+                    delete_files_in_path(graph_ver_dir)
+                    os.rmdir(graph_ver_dir)
 
 
 def save_source_to_dir(base_dir):

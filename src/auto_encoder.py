@@ -1,6 +1,6 @@
 import multiprocessing
 import os
-
+import math
 import keras
 import numpy as np
 import tensorflow as tf
@@ -10,39 +10,38 @@ from keras.layers.normalization import BatchNormalization
 from keras.layers.pooling import MaxPooling2D
 from keras.models import Sequential, load_model
 from keras.optimizers import Adam
-
-from src import utils
-from src.loadworker import load_worlds
+import utils
+from loadworker import GanWorldLoader, load_worlds
 
 
 def autoencoder_model():
     model = Sequential(name="autoencoder")
 
-    model.add(Conv2D(64, kernel_size=3, strides=1, padding="same", input_shape=(64, 64, 10)))
+    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same", input_shape=(64, 64, 10)))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(64, kernel_size=3, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-
-    model.add(Conv2D(128, kernel_size=3, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2D(128, kernel_size=3, strides=1, padding="same"))
+    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
-    model.add(Conv2D(256, kernel_size=3, strides=1, padding="same"))
+    model.add(Conv2D(128, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(256, kernel_size=3, strides=1, padding="same"))
+    model.add(Conv2D(128, kernel_size=5, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
+    model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
@@ -87,9 +86,10 @@ def autoencoder_model():
 def train(epochs, batch_size, world_count, version_name=None):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
-    models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
-    model_dir = utils.check_or_create_local_path("auto_encoder", models_dir)
+    all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
+    model_dir = utils.check_or_create_local_path("auto_encoder", all_models_dir)
 
+    utils.delete_empty_versions(model_dir)
     if version_name is None:
         latest = utils.get_latest_version(model_dir)
         version_name = "ver%s" % (latest + 1)
@@ -100,7 +100,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
     worlds_dir = utils.check_or_create_local_path("worlds", version_dir)
     previews_dir = utils.check_or_create_local_path("previews", version_dir)
-    models_dir = utils.check_or_create_local_path("models", version_dir)
+    model_save_dir = utils.check_or_create_local_path("models", version_dir)
 
     print("Saving source...")
     utils.save_source_to_dir(version_dir)
@@ -165,6 +165,7 @@ def train(epochs, batch_size, world_count, version_name=None):
                           utilization_count)
 
     # Start Training loop
+    world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
 
     for epoch in range(epochs):
@@ -172,7 +173,7 @@ def train(epochs, batch_size, world_count, version_name=None):
         # Create directories for current epoch
         cur_worlds_cur = utils.check_or_create_local_path("epoch%s" % epoch, worlds_dir)
         cur_previews_dir = utils.check_or_create_local_path("epoch%s" % epoch, previews_dir)
-        cur_models_dir = utils.check_or_create_local_path("epoch%s" % epoch, models_dir)
+        cur_models_dir = utils.check_or_create_local_path("epoch%s" % epoch, model_save_dir)
 
         print("Shuffling data...")
         np.random.shuffle(x_train)
@@ -206,8 +207,9 @@ def train(epochs, batch_size, world_count, version_name=None):
                                              "%s\\actual%s.png" % (cur_previews_dir, batchImage))
 
             # Write loss
-            ae_loss.value[0].simple_value = loss
-            tb_writer.add_summary(ae_loss, (epoch * number_of_batches) + minibatch_index)
+            if not math.isnan(loss):
+                ae_loss.value[0].simple_value = loss
+                tb_writer.add_summary(ae_loss, (epoch * number_of_batches) + minibatch_index)
 
             print("epoch [%d/%d] :: batch [%d/%d] :: loss = %f" % (
                 epoch, epochs, minibatch_index, number_of_batches, loss))
@@ -222,7 +224,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
 
 def main():
-    train(epochs=100, batch_size=64, world_count=100000)
+    train(epochs=100, batch_size=64, world_count=60000)
 
 
 if __name__ == "__main__":
