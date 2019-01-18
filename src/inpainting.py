@@ -6,10 +6,8 @@ import keras
 import numpy as np
 import tensorflow as tf
 
-import ae
-import unet
-import utils
-from loadworker import GanWorldLoader
+from src import utils, auto_encoder, unet
+from src.loadworker import GanWorldLoader
 
 
 def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_values, thread_count):
@@ -50,14 +48,17 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
 
 def train(epochs, batch_size, world_count, version_name=None):
     cur_dir = os.getcwd()
-    contextnet_dir = utils.check_or_create_local_path("contextnet")
+    res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
+    model_dir = utils.check_or_create_local_path("inpainting", res_dir)
 
     if version_name is None:
-        latest = utils.get_latest_version(contextnet_dir)
+        latest = utils.get_latest_version(model_dir)
         version_name = "ver%s" % (latest + 1)
 
-    version_dir = utils.check_or_create_local_path(version_name, contextnet_dir)
-    graph_dir = utils.check_or_create_local_path("graph", version_dir)
+    version_dir = utils.check_or_create_local_path(version_name, model_dir)
+    graph_dir = utils.check_or_create_local_path("graph", model_dir)
+    graph_version_dir = utils.check_or_create_local_path(version_name, graph_dir)
+
     worlds_dir = utils.check_or_create_local_path("worlds", version_dir)
     previews_dir = utils.check_or_create_local_path("previews", version_dir)
     models_dir = utils.check_or_create_local_path("models", version_dir)
@@ -69,19 +70,23 @@ def train(epochs, batch_size, world_count, version_name=None):
     print("Loading block images...")
     block_images = utils.load_block_images()
 
+    print("Loading encoding dictionaries...")
+    block_forward, block_backward = utils.load_encoding_dict('optimized')
+
     # Load minimap values
     print("Loading minimap values...")
     minimap_values = utils.load_minimap_values()
 
     # Load model
     print("Loading model...")
-    feature_model = ae.autoencoder_model()
+    feature_model = auto_encoder.autoencoder_model()
     feature_model.load_weights('%s\\ae\\ver5\\models\\epoch38\\autoencoder.weights' % cur_dir)
     feature_layers = [7, 14, 21]
 
     contextnet = unet.PConvUnet(feature_model, feature_layers, width=64, height=64, inference_only=False)
     pconv_unet = contextnet.build_pconv_unet(train_bn=True, lr=0.0001)
-    pconv_unet.load_weights('%s\\ver43\\models\\epoch4\\unet.weights' % contextnet_dir)
+    pconv_unet.summary()
+    # pconv_unet.load_weights('%s\\ver43\\models\\epoch4\\unet.weights' % contextnet_dir)
 
     # Delete existing worlds and previews if any
     print("Checking for old generated data...")
@@ -102,7 +107,7 @@ def train(epochs, batch_size, world_count, version_name=None):
     cpu_count = multiprocessing.cpu_count()
     utilization_count = cpu_count - 1
     print("Loading worlds using %s cores." % utilization_count)
-    x_train = load_worlds(world_count, "%s\\WorldRepo4\\" % cur_dir, 64, 64, minimap_values, utilization_count)
+    x_train = load_worlds(world_count, "%s\\WorldRepo\\" % cur_dir, 64, 64, minimap_values, utilization_count)
 
     # Start Training loop
     number_of_batches = world_count // batch_size
@@ -158,7 +163,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
 
 def main():
-    train(epochs=100, batch_size=1, world_count=75000)
+    train(epochs=100, batch_size=1, world_count=100000)
 
 
 if __name__ == "__main__":

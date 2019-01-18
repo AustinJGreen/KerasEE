@@ -15,11 +15,11 @@ from keras.layers.pooling import MaxPooling2D
 from keras.models import Sequential, load_model
 from keras.optimizers import Adam
 
-import utils
-from loadworker import GanWorldLoader
+from src import utils
+from src.loadworker import GanWorldLoader
 
 
-def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_values, thread_count):
+def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_values, block_forward, thread_count):
     world_names = os.listdir(world_directory)
     random.shuffle(world_names)
 
@@ -37,7 +37,7 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
         threads = [None] * thread_count
         for thread in range(thread_count):
             load_thread = GanWorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_width,
-                                         gen_height, None, minimap_values)
+                                         gen_height, block_forward, minimap_values)
             load_thread.start()
             threads[thread] = load_thread
 
@@ -157,14 +157,17 @@ def generator_containing_discriminator(g, d):
 
 def train(epochs, batch_size, world_count, version_name=None):
     cur_dir = os.getcwd()
-    gan_dir = utils.check_or_create_local_path("gan")
+    res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
+    model_dir = utils.check_or_create_local_path("gan", res_dir)
 
     if version_name is None:
-        latest = utils.get_latest_version(gan_dir)
+        latest = utils.get_latest_version(model_dir)
         version_name = "ver%s" % (latest + 1)
 
-    version_dir = utils.check_or_create_local_path(version_name, gan_dir)
-    graph_dir = utils.check_or_create_local_path("graph", version_dir)
+    version_dir = utils.check_or_create_local_path(version_name, model_dir)
+    graph_dir = utils.check_or_create_local_path("graph", model_dir)
+    graph_version_dir = utils.check_or_create_local_path(version_name, graph_dir)
+
     worlds_dir = utils.check_or_create_local_path("worlds", version_dir)
     previews_dir = utils.check_or_create_local_path("previews", version_dir)
     models_dir = utils.check_or_create_local_path("models", version_dir)
@@ -174,7 +177,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
     # Load block images
     print("Loading block images...")
-    block_images = utils.load_block_images()
+    block_images = utils.load_block_images(res_dir)
 
     # Load minimap values
     print("Loading minimap values...")

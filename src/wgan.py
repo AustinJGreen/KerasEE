@@ -4,9 +4,8 @@ import random
 
 import numpy as np
 
-import model
-import utils
-from loadworker import GanWorldLoader
+from src import utils, model
+from src.loadworker import GanWorldLoader
 
 TRAINING_RATIO = 5  # The training ratio is the number of discriminator updates per generator update. The paper uses 5.
 

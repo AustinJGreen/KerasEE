@@ -6,11 +6,8 @@ from threading import Lock
 import numpy as np
 import tensorflow as tf
 
-import ae
-import contextbot.initparse
-import unet
-import utils
-from playerio import *
+from src import utils, auto_encoder, unet
+from src.playerio import *
 
 world_data = None  # block data for bot
 pconv_unet = None
@@ -69,6 +66,8 @@ def build_for(r, player_id):
             cur_block_data = world_data[x, y, 0]
             input_data[loc_x, loc_y] = cur_block_data.Id
 
+    utils.save_world_preview(block_images, input_data, '%s\\input.png' % cur_dir)
+
     encoded_input = utils.encode_world2d_binary(input_data)
     encoded_input[input_mask == 0] = 1
 
@@ -79,15 +78,15 @@ def build_for(r, player_id):
     context_data = utils.decode_world2d_binary(encoded_context_data[0])
     utils.save_world_preview(block_images, context_data, '%s\\real.png' % cur_dir)
 
-    for x in range(64):
-        for y in range(64):
-            if input_mask[x, y, 0] == 0:
-                block_id = int(context_data[x, y])
-                world_x = x + world_x1
-                world_y = y + world_y1
-                if world_data[world_x, world_y, 0].Id != block_id:
-                    r.send('b', 0, world_x, world_y, block_id)
-                    time.sleep(25 / 1000.0)
+    for i in range(len(coords)):
+        x = coords[i][0]
+        y = coords[i][1]
+        loc_x = x - world_x1
+        loc_y = y - world_y1
+        block_id = int(context_data[loc_x, loc_y])
+        if world_data[x, y, 0].Id != block_id:
+            r.send('b', 0, x, y, block_id)
+            time.sleep(25 / 1000.0)
 
 
 @EventHandler.add('init')
@@ -95,12 +94,15 @@ def on_init(r, init_message):
     print("Joined.")
     r.send('init2')
 
-    global world_data
-    world_data = contextbot.initparse.get_world_data(init_message)
+    width = init_message[18]
+    height = init_message[19]
 
-    wd = np.zeros((200, 400), dtype=int)
-    for x in range(200):
-        for y in range(400):
+    global world_data
+    world_data = src.playerio.initparse.get_world_data(init_message)
+
+    wd = np.zeros((width, height), dtype=int)
+    for x in range(width):
+        for y in range(height):
             wd[x, y] = world_data[x, y, 0].Id
 
     utils.save_world_preview(block_images, wd, '%s\\init.png' % os.getcwd())
@@ -163,7 +165,7 @@ version = client.bigdb_load('config', 'config')['version']
 
 # Join a room
 
-bot_room = client.create_join_room('PW-48NLanscEI', f'Everybodyedits{version}', True)
+bot_room = client.create_join_room('PWepTmnQjRa0I', f'Everybodyedits{version}', True)
 
 # Send a message
 print("Joining world...")
@@ -174,14 +176,14 @@ build_queue = []  # (x, y) mask queue for bot
 cur_dir = 'C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\'
 
 print("Loading feature model...")
-feature_model = ae.autoencoder_model()
+feature_model = auto_encoder.autoencoder_model()
 feature_model.load_weights('%s\\ae\\ver5\\models\\epoch38\\autoencoder.weights' % cur_dir)
 feature_layers = [7, 14, 21]
 
 print("Loading context model...")
 contextnet = unet.PConvUnet(feature_model, feature_layers, width=64, height=64, inference_only=False)
 pconv_unet = contextnet.build_pconv_unet(train_bn=False, lr=0.0001)
-pconv_unet.load_weights('%s\\contextnet\\ver52\\models\\epoch5\\unet.weights' % cur_dir)
+pconv_unet.load_weights('%s\\contextnet\\ver54\\models\\epoch2\\unet.weights' % cur_dir)
 graph = tf.get_default_graph()
 
 print("Done loading model.")

@@ -12,11 +12,11 @@ from keras.layers.pooling import MaxPooling2D
 from keras.models import Sequential, load_model
 from keras.optimizers import Adam
 
-import utils
-from loadworker import GanWorldLoader
+from src import utils
+from src.loadworker import GanWorldLoader
 
 
-def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_values, thread_count):
+def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_values, block_forward, thread_count):
     world_names = os.listdir(world_directory)
     random.shuffle(world_names)
 
@@ -26,7 +26,7 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
         for name in world_names:
             file_queue.put(world_directory + name)
 
-        world_array = np.zeros((load_count, gen_width, gen_height, 11), dtype=np.int8)
+        world_array = np.zeros((load_count, gen_width, gen_height, 10), dtype=np.int8)
 
         world_counter = multiprocessing.Value('i', 0)
         thread_lock = multiprocessing.Lock()
@@ -34,7 +34,7 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
         threads = [None] * thread_count
         for thread in range(thread_count):
             load_thread = GanWorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_width,
-                                         gen_height, None, minimap_values)
+                                         gen_height, block_forward, minimap_values)
             load_thread.start()
             threads[thread] = load_thread
 
@@ -54,9 +54,8 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
 
 def autoencoder_model():
     model = Sequential(name="autoencoder")
-    model.add(keras.layers.InputLayer(input_shape=(64, 64, 11)))
 
-    model.add(Conv2D(64, kernel_size=3, strides=1, padding="same"))
+    model.add(Conv2D(64, kernel_size=3, strides=1, padding="same", input_shape=(64, 64, 10)))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
@@ -114,7 +113,7 @@ def autoencoder_model():
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2DTranspose(11, kernel_size=5, strides=1, padding="same"))
+    model.add(Conv2DTranspose(10, kernel_size=5, strides=1, padding="same"))
     model.add(Activation('sigmoid'))
 
     model.trainable = True
@@ -124,14 +123,18 @@ def autoencoder_model():
 
 def train(epochs, batch_size, world_count, version_name=None):
     cur_dir = os.getcwd()
-    gan_dir = utils.check_or_create_local_path("ae")
+    res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
+    models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
+    model_dir = utils.check_or_create_local_path("auto_encoder", models_dir)
 
     if version_name is None:
-        latest = utils.get_latest_version(gan_dir)
+        latest = utils.get_latest_version(model_dir)
         version_name = "ver%s" % (latest + 1)
 
-    version_dir = utils.check_or_create_local_path(version_name, gan_dir)
-    graph_dir = utils.check_or_create_local_path("graph", version_dir)
+    version_dir = utils.check_or_create_local_path(version_name, model_dir)
+    graph_dir = utils.check_or_create_local_path("graph", model_dir)
+    graph_version_dir = utils.check_or_create_local_path(version_name, graph_dir)
+
     worlds_dir = utils.check_or_create_local_path("worlds", version_dir)
     previews_dir = utils.check_or_create_local_path("previews", version_dir)
     models_dir = utils.check_or_create_local_path("models", version_dir)
@@ -141,11 +144,14 @@ def train(epochs, batch_size, world_count, version_name=None):
 
     # Load block images
     print("Loading block images...")
-    block_images = utils.load_block_images()
+    block_images = utils.load_block_images(res_dir)
+
+    print("Loading encoding dictionaries...")
+    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
     # Load minimap values
     print("Loading minimap values...")
-    minimap_values = utils.load_minimap_values()
+    minimap_values = utils.load_minimap_values(res_dir)
 
     # Load model and existing weights
     print("Loading model...")
@@ -180,11 +186,11 @@ def train(epochs, batch_size, world_count, version_name=None):
 
     # Set up tensorboard
     print("Setting up tensorboard...")
-    tb_callback = keras.callbacks.TensorBoard(log_dir=graph_dir, write_graph=True)
+    tb_callback = keras.callbacks.TensorBoard(log_dir=graph_version_dir, write_graph=True)
     tb_callback.set_model(ae)
 
     # before training init writer (for tensorboard log) / model
-    tb_writer = tf.summary.FileWriter(logdir=graph_dir)
+    tb_writer = tf.summary.FileWriter(logdir=graph_version_dir)
     ae_loss = tf.Summary()
     ae_loss.value.add(tag='ae_loss', simple_value=None)
 
@@ -192,7 +198,8 @@ def train(epochs, batch_size, world_count, version_name=None):
     cpu_count = multiprocessing.cpu_count()
     utilization_count = cpu_count - 1
     print("Loading worlds using %s cores." % utilization_count)
-    x_train = load_worlds(world_count, "%s\\WorldRepo4\\" % cur_dir, 64, 64, minimap_values, utilization_count)
+    x_train = load_worlds(world_count, "%s\\world_repo\\" % res_dir, 64, 64, minimap_values, block_forward,
+                          utilization_count)
 
     # Start Training loop
     number_of_batches = world_count // batch_size
@@ -223,7 +230,7 @@ def train(epochs, batch_size, world_count, version_name=None):
                 # Save samples
                 for batchImage in range(batch_size):
                     generated_world = generated[batchImage]
-                    decoded_world = utils.decode_world2d_binary(generated_world)
+                    decoded_world = utils.decode_world2d_binary(block_backward, generated_world)
                     utils.save_world_data(decoded_world, "%s\\world%s.dat" % (cur_worlds_cur, batchImage))
                     utils.save_world_preview(block_images, decoded_world,
                                              "%s\\preview%s.png" % (cur_previews_dir, batchImage))
@@ -231,7 +238,7 @@ def train(epochs, batch_size, world_count, version_name=None):
                 # Save actual worlds
                 for batchImage in range(batch_size):
                     actual_world = world_batch[batchImage]
-                    decoded_world = utils.decode_world2d_binary(actual_world)
+                    decoded_world = utils.decode_world2d_binary(block_backward, actual_world)
                     utils.save_world_preview(block_images, decoded_world,
                                              "%s\\actual%s.png" % (cur_previews_dir, batchImage))
 
@@ -252,7 +259,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
 
 def main():
-    train(epochs=100, batch_size=64, world_count=50000)
+    train(epochs=100, batch_size=64, world_count=100000)
 
 
 if __name__ == "__main__":

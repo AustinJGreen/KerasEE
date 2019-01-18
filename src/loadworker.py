@@ -4,7 +4,7 @@ from multiprocessing import Process
 
 import numpy as np
 
-import utils
+from src import utils
 
 
 class GanWorldLoader(Process):
@@ -59,7 +59,8 @@ class GanWorldLoader(Process):
                     edited_blocks += 1
 
         total_size = width * height
-        return edited_blocks >= 0.4 * total_size
+        required = int(0.4 * total_size)
+        return edited_blocks >= required
 
     def load_world(self, world_file):
         world = utils.load_world_data_ver3(world_file)
@@ -97,7 +98,7 @@ class GanWorldLoader(Process):
 
                 if self.is_good_world(cross_section0):
 
-                    encoded_world0 = utils.encode_world2d_binary(cross_section0)
+                    encoded_world0 = utils.encode_world2d_binary(self.blockForwardDict, cross_section0, 10)
 
                     encoded_worlds = [encoded_world0]
 

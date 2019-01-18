@@ -9,12 +9,12 @@ from PIL import Image
 from skimage.draw import ellipse
 from skimage.draw import line
 
-import blocks
+from src import blocks
 
 
-def load_minimap_values():
+def load_minimap_values(base_dir):
     minimap_dict = {}
-    with open("./block_colors.txt") as fp:
+    with open("%s\\block_colors.txt" % base_dir) as fp:
         line = fp.readline()
         while line:
             space_index = line.index(" ")
@@ -27,34 +27,29 @@ def load_minimap_values():
     return minimap_dict
 
 
-def load_block_images():
+def load_block_images(base_dir):
     block_dict = {}
-    for filename in os.listdir("./blocks"):
-        file = "./blocks/%s" % filename
+    for filename in os.listdir("%s\\blocks" % base_dir):
+        file = "%s\\blocks\\%s" % (base_dir, filename)
         if os.path.isfile(file):
             block_dict[int(filename[1:-4])] = Image.open(file)
     return block_dict
 
 
-def load_encoding_dict(name):
-    block_forward_dict = [{}, {}, {}, {}]
-    block_backward_dict = [{}, {}, {}, {}]
-    with open("./%s.txt" % name) as fp:
+def load_encoding_dict(base_dir, name):
+    block_forward_dict = {}
+    block_backward_dict = {}
+    with open("%s\\%s.txt" % (base_dir, name)) as fp:
         line = fp.readline()
         while line:
             block = int(line)
-            block_category = 0  # blocks.get_block_category(block)
             assert block not in block_forward_dict
-            block_hash = len(block_forward_dict[block_category])
-            block_forward_dict[block_category][block] = block_hash
-            block_backward_dict[block_category][block_hash] = block
+            block_hash = len(block_forward_dict)
+            block_forward_dict[block] = block_hash
+            block_backward_dict[block_hash] = block
             line = fp.readline()
     assert len(block_forward_dict) == len(block_backward_dict)
     return block_forward_dict, block_backward_dict
-
-
-def trapez(y, y0, w):
-    return np.clip(np.minimum(y + 1 + w / 2 - y0, -y + 1 + w / 2 + y0), 0, 1)
 
 
 def random_mask(height, width, channels=11):
@@ -62,29 +57,32 @@ def random_mask(height, width, channels=11):
     mask = np.zeros((height, width, channels), np.int8)
     img = np.zeros((height, width, 3), np.int8)
 
+    max_size = 12
+
     # Random rectangles
     for i in range(randint(1, 2)):
-        x1 = randint(1, width - 25)
-        x_width = randint(5, min(24, width - x1))
+        x1 = randint(1, width - max_size - 1)
+        x_width = randint(5, min(max_size, width - x1))
         x2 = x1 + x_width
 
-        y1 = randint(1, height - 25)
-        y_height = randint(5, min(24, height - y1))
+        y1 = randint(1, height - max_size - 1)
+        y_height = randint(5, min(max_size, height - y1))
         y2 = y1 + y_height
 
         mask[x1:x2, y1:y2, :] = 1
 
     # Random circles
     for j in range(randint(1, 2)):
-        x1 = randint(1, width - 25)
-        x_width = randint(5, min(24, width - x1))
-        y1 = randint(1, height - 25)
-        y_height = randint(5, min(24, height - y1))
+        x1 = randint(1, width - max_size - 1)
+        x_width = randint(5, min(max_size, width - x1))
+
+        y1 = randint(1, height - max_size - 1)
+        y_height = randint(5, min(max_size, height - y1))
         rr, cc = ellipse(y1, x1, y_height, x_width)
         mask[cc, rr, :] = 1
 
     # Random lines
-    for j in range(randint(10, 20)):
+    for j in range(randint(15, 20)):
         x1, x2 = randint(1, width - 1), randint(1, width - 1)
         y1, y2 = randint(1, height - 1), randint(1, height - 1)
         rr, cc = line(y1, x1, y2, x2)
@@ -119,19 +117,27 @@ def decode_world2d(block_backward_dict, world_data):
     return world_copy
 
 
-def decode_world2d_binary(world_data):
+def decode_world2d_binary(block_backward, world_data):
+    bits = world_data.shape[2]
     width = world_data.shape[0]
     height = world_data.shape[1]
     world_copy = np.zeros((width, height), dtype=int)
     for y in range(height):
         for x in range(width):
             value = 0
-            for bit in range(world_data.shape[2]):
+            for bit in range(bits):
                 bit_data = world_data[x, y, bit]
+
                 bit_value = 0
                 if bit_data >= 0.5:
                     bit_value = 1
-                value = value | (bit_value << (10 - bit))
+                value = value | (bit_value << ((bits - 1) - bit))
+
+            if value in block_backward:
+                value = block_backward[value]
+            else:
+                value = 0
+
             world_copy[x, y] = int(value)
     return world_copy
 
@@ -172,27 +178,35 @@ def encode_world2d(block_forward_dict, world_data):
     return world_copy
 
 
-def encode_world2d_binary(world_data):
+def encode_world2d_binary(block_forward, world_data, bits):
     width = world_data.shape[0]
     height = world_data.shape[1]
-    world_copy = np.zeros((width, height, 11), dtype=np.int8)
+    world_copy = np.zeros((width, height, bits), dtype=np.int8)
 
     if len(world_data.shape) == 2:
         for y in range(height):
             for x in range(width):
                 value = int(world_data[x, y])
-                for bit in range(11):
+                if value in block_forward:
+                    value = block_forward[value]
+                else:
+                    value = 0
+                for bit in range(bits):
                     bit_value = (value >> bit) & 1
                     bit_value_reshaped = bit_value  # (bit_value * 2) - 1
-                    world_copy[x, y, 10 - bit] = bit_value_reshaped  # [-1, 1]
+                    world_copy[x, y, bits - 1 - bit] = bit_value_reshaped  # [-1, 1]
     elif len(world_data.shape) == 3:  # Just take foreground
         for y in range(height):
             for x in range(width):
                 value = int(world_data[x, y, 0])
-                for bit in range(11):
+                if value in block_forward:
+                    value = block_forward[value]
+                else:
+                    value = 0
+                for bit in range(bits):
                     bit_value = (value >> bit) & 1
                     bit_value_reshaped = bit_value  # (bit_value * 2) - 1
-                    world_copy[x, y, 10 - bit] = bit_value_reshaped  # [-1, 1]
+                    world_copy[x, y, bits - 1 - bit] = bit_value_reshaped  # [-1, 1]
 
     return world_copy
 
@@ -474,9 +488,10 @@ def save_source_to_dir(base_dir):
 def get_latest_version(directory):
     highest_ver = 0
     for path in os.listdir(directory):
-        path_ver = int(path[3:])
-        if path_ver > highest_ver:
-            highest_ver = path_ver
+        if path[:3] == 'ver':
+            path_ver = int(path[3:])
+            if path_ver > highest_ver:
+                highest_ver = path_ver
 
     return highest_ver
 
@@ -499,10 +514,10 @@ def rotate_world90(world_data):
     return rotated_world
 
 
-def save_train_data(train_data, block_images, dir):
+def save_train_data(train_data, block_images, base_dir):
     for i in range(train_data.shape[0]):
         decoded_world = decode_world2d_binary(train_data[i])
-        save_world_preview(block_images, decoded_world, '%s\\image%s.png' % (dir, i))
+        save_world_preview(block_images, decoded_world, '%s\\image%s.png' % (base_dir, i))
 
 
 def save_world_repo_previews(world_repo, output_dir):

@@ -4,7 +4,7 @@ from keras.layers.merge import Concatenate
 from keras.models import Model
 from keras.optimizers import Adam
 
-from pconv_layer import PConv2D
+from src.pconv_layer import PConv2D
 
 
 class PConvUnet:
@@ -30,7 +30,7 @@ class PConvUnet:
         self.model = self.build_pconv_unet()
 
     def build_feature_model(self, feature_model):
-        world = Input(shape=(self.width, self.height, 11))
+        world = Input(shape=(self.width, self.height, 10))
 
         # If inference only, just return empty model
         if self.inference_only:
@@ -53,8 +53,8 @@ class PConvUnet:
     def build_pconv_unet(self, train_bn=True, lr=0.0002):
 
         # INPUTS
-        inputs_world = Input((64, 64, 11), name='inputs_world')
-        inputs_mask = Input((64, 64, 11), name='inputs_mask')
+        inputs_world = Input((64, 64, 10), name='inputs_world')
+        inputs_mask = Input((64, 64, 10), name='inputs_mask')
 
         # ENCODER
         def encoder_layer(img_in, mask_in, filters, kernel_size, bn=True):
