@@ -55,7 +55,6 @@ def load_encoding_dict(base_dir, name):
 def random_mask_high(height, width, channels=11):
     """Generates a random irregular mask based off of rectangles"""
     mask = np.zeros((height, width, channels), np.int8)
-    img = np.zeros((height, width, 3), np.int8)
 
     max_size = 12
 
@@ -94,7 +93,6 @@ def random_mask_high(height, width, channels=11):
 def random_mask_low(height, width, channels=11):
     """Generates a random irregular mask based off of rectangles"""
     mask = np.zeros((height, width, channels), np.int8)
-    img = np.zeros((height, width, 3), np.int8)
 
     max_size = 12
 
@@ -109,7 +107,7 @@ def random_mask_low(height, width, channels=11):
 
     mask[x1:x2, y1:y2, :] = 1
 
-    return 1 - mask
+    return mask
 
 
 def mask_batch_high(batch):

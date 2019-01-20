@@ -207,7 +207,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     helper_feedback.compile(loss="binary_crossentropy", optimizer=helper_optimizer)
 
     # before training init writer (for tensorboard log) / model
-    tb_writer = tf.summary.FileWriter(logdir=graph_dir)
+    tb_writer = tf.summary.FileWriter(logdir=graph_version_dir)
     j_loss_summary = tf.Summary()
     j_loss_summary.value.add(tag='j_loss', simple_value=None)
 
@@ -268,7 +268,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             j_fake = judge.train_on_batch([world_batch_masked, generated[1]], masked_labels)
 
             j_fake_acc_summary.value[0].simple_value = j_fake[1]
-            tb_writer.add_summary(j_real_acc_summary, (epoch * number_of_batches) + minibatch_index)
+            tb_writer.add_summary(j_fake_acc_summary, (epoch * number_of_batches) + minibatch_index)
 
             j_acc_summary.value[0].simple_value = (j_real[1] + j_fake[1]) / 2
             tb_writer.add_summary(j_acc_summary, (epoch * number_of_batches) + minibatch_index)
