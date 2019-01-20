@@ -94,15 +94,15 @@ def random_mask_low(height, width, channels=11):
     """Generates a random irregular mask based off of rectangles"""
     mask = np.zeros((height, width, channels), np.int8)
 
-    max_size = 12
+    max_size = 20
 
     # Random rectangles
     x1 = randint(1, width - max_size - 1)
-    x_width = randint(5, min(max_size, width - x1))
+    x_width = randint(12, min(max_size, width - x1))
     x2 = x1 + x_width
 
     y1 = randint(1, height - max_size - 1)
-    y_height = randint(5, min(max_size, height - y1))
+    y_height = randint(12, min(max_size, height - y1))
     y2 = y1 + y_height
 
     mask[x1:x2, y1:y2, :] = 1

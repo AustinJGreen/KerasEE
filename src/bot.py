@@ -6,7 +6,7 @@ from threading import Lock
 import numpy as np
 import tensorflow as tf
 
-import unet
+import unet_model
 import utils
 from playerio import *
 from playerio.initparse import get_world_data
@@ -180,7 +180,7 @@ build_queue = []  # (x, y) mask queue for bot
 cur_dir = 'C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\'
 
 print("Loading context model...")
-contextnet = unet.PConvUnet(None, [7, 14, 21], width=64, height=64, inference_only=True)
+contextnet = unet_model.PConvUnet(None, [7, 14, 21], width=64, height=64, inference_only=True)
 pconv_unet = contextnet.build_pconv_unet(train_bn=False, lr=0.0001)
 pconv_unet.load_weights('%s\\models\\inpainting\\ver2\\models\\epoch2\\unet.weights' % cur_dir)
 graph = tf.get_default_graph()

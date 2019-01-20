@@ -8,7 +8,7 @@ import tensorflow as tf
 import auto_encoder
 import utils
 from loadworker import load_worlds
-from unet import PConvUnet
+from unet_model import PConvUnet
 
 
 def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):

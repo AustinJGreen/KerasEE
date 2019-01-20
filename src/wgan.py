@@ -4,8 +4,8 @@ import random
 
 import numpy as np
 
-from src import utils, model
-from src.loadworker import GanWorldLoader
+from src import utils, wgan_model
+from src.loadworker import WorldLoader
 
 TRAINING_RATIO = 5  # The training ratio is the number of discriminator updates per generator update. The paper uses 5.
 
@@ -27,8 +27,8 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, block_forwar
 
         threads = [None] * thread_count
         for thread in range(thread_count):
-            load_thread = GanWorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_width,
-                                         gen_height, block_forward_dict, minimap_values)
+            load_thread = WorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_width,
+                                      gen_height, block_forward_dict, minimap_values)
             load_thread.start()
             threads[thread] = load_thread
 
@@ -74,7 +74,7 @@ def train(epochs, batch_size, world_count, version_name=None):
     block_forward_dict, block_backward_dict = utils.load_encoding_dict("blocklist")
 
     print("Compiling model...")
-    discriminator_model, generator_model, generator = model.build_wgan(batch_size)
+    discriminator_model, generator_model, generator = wgan_model.build_wgan(batch_size)
 
     print("Loading data...")
     x_train = load_worlds(load_count=50000, world_directory='%s\\WorldRepo3\\' % cur_dir, gen_width=64, gen_height=64,

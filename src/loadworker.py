@@ -6,7 +6,7 @@ from multiprocessing import Process, Manager, Value, Lock
 
 import numpy as np
 
-from src import utils
+import utils
 
 
 def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_values, block_forward, thread_count):
@@ -26,8 +26,8 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
 
         threads = [None] * thread_count
         for thread in range(thread_count):
-            load_thread = GanWorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_width,
-                                         gen_height, block_forward, minimap_values)
+            load_thread = WorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_width,
+                                      gen_height, block_forward, minimap_values)
             load_thread.start()
             threads[thread] = load_thread
 
@@ -46,7 +46,7 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
     return world_array
 
 
-class GanWorldLoader(Process):
+class WorldLoader(Process):
     fileQueue = None
     loadQueue = None
     worldCounter = None
