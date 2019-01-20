@@ -6,12 +6,16 @@ from threading import Lock
 import numpy as np
 import tensorflow as tf
 
-from src import utils, auto_encoder, unet
-from src.playerio import *
+import unet
+import utils
+from playerio import *
+from playerio.initparse import get_world_data
 
 world_data = None  # block data for bot
 pconv_unet = None
-block_images = utils.load_block_images()
+block_images = utils.load_block_images('C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\res\\')
+block_forward, block_backward = utils.load_encoding_dict('C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\res\\',
+                                                         'optimized')
 global graph
 
 
@@ -52,7 +56,7 @@ def build_for(r, player_id):
     world_y1 = max(0, avg_y - 32)
     world_y2 = min(world_data.shape[1], world_y1 + 64)
 
-    input_mask = np.ones((64, 64, 11), dtype=np.int8)
+    input_mask = np.ones((64, 64, 10), dtype=np.int8)
     for i in range(len(coords)):
         loc_x = coords[i][0] - world_x1
         loc_y = coords[i][1] - world_y2
@@ -64,18 +68,18 @@ def build_for(r, player_id):
             loc_x = x - world_x1
             loc_y = y - world_y1
             cur_block_data = world_data[x, y, 0]
-            input_data[loc_x, loc_y] = cur_block_data.Id
+            input_data[loc_x, loc_y] = cur_block_data.block_id
 
     utils.save_world_preview(block_images, input_data, '%s\\input.png' % cur_dir)
 
-    encoded_input = utils.encode_world2d_binary(input_data)
+    encoded_input = utils.encode_world2d_binary(block_forward, input_data, 10)
     encoded_input[input_mask == 0] = 1
 
     encoded_context_data = None
     with graph.as_default():
         encoded_context_data = pconv_unet.predict([[encoded_input], [input_mask]])
 
-    context_data = utils.decode_world2d_binary(encoded_context_data[0])
+    context_data = utils.decode_world2d_binary(block_backward, encoded_context_data[0])
     utils.save_world_preview(block_images, context_data, '%s\\real.png' % cur_dir)
 
     for i in range(len(coords)):
@@ -84,7 +88,7 @@ def build_for(r, player_id):
         loc_x = x - world_x1
         loc_y = y - world_y1
         block_id = int(context_data[loc_x, loc_y])
-        if world_data[x, y, 0].Id != block_id:
+        if world_data[x, y, 0].block_id != block_id:
             r.send('b', 0, x, y, block_id)
             time.sleep(25 / 1000.0)
 
@@ -98,12 +102,12 @@ def on_init(r, init_message):
     height = init_message[19]
 
     global world_data
-    world_data = src.playerio.initparse.get_world_data(init_message)
+    world_data = get_world_data(init_message)
 
     wd = np.zeros((width, height), dtype=int)
     for x in range(width):
         for y in range(height):
-            wd[x, y] = world_data[x, y, 0].Id
+            wd[x, y] = world_data[x, y, 0].block_id
 
     utils.save_world_preview(block_images, wd, '%s\\init.png' % os.getcwd())
 
@@ -119,7 +123,7 @@ def on_block(r, b_message):
     global world_data
 
     if layer_id == 0:
-        world_data[block_x, block_y, 0].Id = block_id
+        world_data[block_x, block_y, 0].block_id = block_id
 
     if block_id == 12:
         build_queue.append((player_id, block_x, block_y))
@@ -152,7 +156,7 @@ def on_disconnect(r, disconnect_message):
 print("Logging in...")
 username = None
 password = None
-with open("./ugp") as fp:
+with open("C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\res\\ugp") as fp:
     line = fp.readline()
     spl = line.split(' ')
     username = spl[0]
@@ -175,15 +179,10 @@ build_queue = []  # (x, y) mask queue for bot
 
 cur_dir = 'C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\'
 
-print("Loading feature model...")
-feature_model = auto_encoder.autoencoder_model()
-feature_model.load_weights('%s\\ae\\ver5\\models\\epoch38\\autoencoder.weights' % cur_dir)
-feature_layers = [7, 14, 21]
-
 print("Loading context model...")
-contextnet = unet.PConvUnet(feature_model, feature_layers, width=64, height=64, inference_only=False)
+contextnet = unet.PConvUnet(None, [7, 14, 21], width=64, height=64, inference_only=True)
 pconv_unet = contextnet.build_pconv_unet(train_bn=False, lr=0.0001)
-pconv_unet.load_weights('%s\\contextnet\\ver54\\models\\epoch2\\unet.weights' % cur_dir)
+pconv_unet.load_weights('%s\\models\\inpainting\\ver2\\models\\epoch2\\unet.weights' % cur_dir)
 graph = tf.get_default_graph()
 
 print("Done loading model.")

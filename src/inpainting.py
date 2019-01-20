@@ -4,19 +4,20 @@ import os
 import keras
 import numpy as np
 import tensorflow as tf
-import utils
+
 import auto_encoder
-from unet import PConvUnet
+import utils
 from loadworker import load_worlds
+from unet import PConvUnet
 
 
-def train(epochs, batch_size, world_count, version_name=None):
+def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
     model_dir = utils.check_or_create_local_path("inpainting", all_models_dir)
 
-    utils.delete_empty_versions(model_dir)
+    utils.delete_empty_versions(model_dir, 0)
     if version_name is None:
         latest = utils.get_latest_version(model_dir)
         version_name = "ver%s" % (latest + 1)
@@ -79,7 +80,7 @@ def train(epochs, batch_size, world_count, version_name=None):
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
 
-    for epoch in range(epochs):
+    for epoch in range(initial_epoch, epochs):
 
         print("Epoch = %s " % epoch)
         # Create directories for current epoch
@@ -94,7 +95,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
             # Get real set of images
             world_batch = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
-            world_batch_masked = utils.mask_batch(world_batch)
+            world_batch_masked, world_masks = utils.mask_batch_high(world_batch)
 
             if minibatch_index % 1000 == 999 or minibatch_index == number_of_batches - 1:
 
@@ -106,7 +107,7 @@ def train(epochs, batch_size, world_count, version_name=None):
                     print("Failed to save data.")
 
                 # Save previews
-                test = unet.predict(world_batch_masked)
+                test = unet.predict([world_batch_masked, world_masks])
 
                 d0 = utils.decode_world2d_binary(block_backward, world_batch[0])
                 utils.save_world_preview(block_images, d0, '%s\\%s_orig.png' % (cur_previews_dir, minibatch_index))
@@ -114,10 +115,10 @@ def train(epochs, batch_size, world_count, version_name=None):
                 d1 = utils.decode_world2d_binary(block_backward, test[0])
                 utils.save_world_preview(block_images, d1, '%s\\%s_fixed.png' % (cur_previews_dir, minibatch_index))
 
-                d2 = utils.decode_world2d_binary(block_backward, world_batch_masked[0][0])
+                d2 = utils.decode_world2d_binary(block_backward, world_batch_masked[0])
                 utils.save_world_preview(block_images, d2, '%s\\%s_masked.png' % (cur_previews_dir, minibatch_index))
 
-            loss = unet.train_on_batch(world_batch_masked, world_batch)
+            loss = unet.train_on_batch([world_batch_masked, world_masks], world_batch)
 
             unet_loss_summary.value[0].simple_value = loss / 1000.0  # Divide by 1000 for better Y-Axis values
             tb_writer.add_summary(unet_loss_summary, (epoch * number_of_batches) + minibatch_index)
@@ -128,7 +129,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
 
 def main():
-    train(epochs=100, batch_size=1, world_count=60000)
+    train(epochs=100, batch_size=1, world_count=60000, initial_epoch=0)
 
 
 if __name__ == "__main__":

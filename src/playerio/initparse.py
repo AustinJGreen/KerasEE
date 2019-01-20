@@ -53,38 +53,38 @@ def get_world_data(m):
 
     data = parse(m)
     for chunk in data:
-        for location in chunk.Locations:
-            blocks[location[0], location[1], chunk.Layer] = BlockData(chunk.Layer, location[0], location[1],
-                                                                      int(chunk.Type), chunk.Args)
+        for location in chunk.locations:
+            blocks[location[0], location[1], chunk.layer] = BlockData(chunk.layer, location[0], location[1],
+                                                                      int(chunk.type), chunk.args)
     return blocks
 
 
 class BlockData:
-    Layer = None
-    X = None
-    Y = None
-    Id = None
-    Args = None
+    layer = None
+    x = None
+    y = None
+    block_id = None
+    args = None
 
     def __init__(self, layer, x, y, block_id, args):
-        self.Layer = layer
-        self.X = x
-        self.Y = y
-        self.Id = block_id
-        self.Args = args
+        self.layer = layer
+        self.x = x
+        self.y = y
+        self.block_id = block_id
+        self.args = args
 
 
 class DataChunk:
-    Locations = None
-    Args = None
-    Layer = None
-    Type = None
+    locations = None
+    args = None
+    layer = None
+    type = None
 
     def __init__(self, layer, block_type, xs, ys, args):
-        self.Layer = layer
-        self.Type = block_type
-        self.Args = args
-        self.Locations = self.get_locations(xs, ys)
+        self.layer = layer
+        self.type = block_type
+        self.args = args
+        self.locations = self.get_locations(xs, ys)
 
     @staticmethod
     def get_locations(xs, ys):

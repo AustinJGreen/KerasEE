@@ -1,0 +1,9 @@
+Some sort of assistant instead of inpainting
+One model needs to output a prediction of an added block or blocks?
+One model predicts how good that block is
+
+32x32 Area, one model outputs prediction score for good each block is pixelwise
+other model is purely given 32x32 input like auto-encoder and tasked to improve area
+
+Judge is trained upon whether or not original comes from generated, 100% or 0% sure
+Helper is trained upon

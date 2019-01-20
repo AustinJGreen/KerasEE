@@ -52,7 +52,7 @@ def load_encoding_dict(base_dir, name):
     return block_forward_dict, block_backward_dict
 
 
-def random_mask(height, width, channels=11):
+def random_mask_high(height, width, channels=11):
     """Generates a random irregular mask based off of rectangles"""
     mask = np.zeros((height, width, channels), np.int8)
     img = np.zeros((height, width, 3), np.int8)
@@ -91,19 +91,55 @@ def random_mask(height, width, channels=11):
     return 1 - mask
 
 
-def mask_batch(batch):
+def random_mask_low(height, width, channels=11):
+    """Generates a random irregular mask based off of rectangles"""
+    mask = np.zeros((height, width, channels), np.int8)
+    img = np.zeros((height, width, 3), np.int8)
+
+    max_size = 12
+
+    # Random rectangles
+    x1 = randint(1, width - max_size - 1)
+    x_width = randint(5, min(max_size, width - x1))
+    x2 = x1 + x_width
+
+    y1 = randint(1, height - max_size - 1)
+    y_height = randint(5, min(max_size, height - y1))
+    y2 = y1 + y_height
+
+    mask[x1:x2, y1:y2, :] = 1
+
+    return 1 - mask
+
+
+def mask_batch_high(batch):
     masked = np.empty(batch.shape, dtype=np.int8)
     masks = np.empty(batch.shape, dtype=np.int8)
 
     batch_size = batch.shape[0]
     for i in range(batch_size):
         world_masked = np.copy(batch[i])
-        mask = random_mask(world_masked.shape[0], world_masked.shape[1], world_masked.shape[2])
+        mask = random_mask_high(world_masked.shape[0], world_masked.shape[1], world_masked.shape[2])
         world_masked[mask == 0] = 1
         masked[i] = world_masked
         masks[i] = mask
 
-    return [masked, masks]
+    return masked, masks
+
+
+def mask_batch_low(batch):
+    masked = np.empty(batch.shape, dtype=np.int8)
+    masks = np.empty(batch.shape, dtype=np.int8)
+
+    batch_size = batch.shape[0]
+    for i in range(batch_size):
+        world_masked = np.copy(batch[i])
+        mask = random_mask_low(world_masked.shape[0], world_masked.shape[1], world_masked.shape[2])
+        world_masked[mask == 0] = 1
+        masked[i] = world_masked
+        masks[i] = mask
+
+    return masked, masks
 
 
 def decode_world2d(block_backward_dict, world_data):
@@ -478,7 +514,7 @@ def delete_files_in_path(path):
             pass
 
 
-def delete_empty_versions(base_dir):
+def delete_empty_versions(base_dir, min_files):
     # Loop through versions
     dir_list = os.listdir(base_dir)
     for ver in dir_list:
@@ -486,7 +522,8 @@ def delete_empty_versions(base_dir):
             version_dir = os.path.join(base_dir, ver)
             graph_ver_dir = os.path.join(base_dir, 'graph', ver)
 
-            if not os.path.exists(graph_ver_dir) or len(os.listdir(graph_ver_dir)) <= 1:  # 1 is just model in graph
+            if not os.path.exists(graph_ver_dir) or len(
+                    os.listdir(graph_ver_dir)) <= min_files:  # 1 is just model in graph
                 # Delete both directories
                 delete_files_in_path(version_dir)
                 os.rmdir(version_dir)

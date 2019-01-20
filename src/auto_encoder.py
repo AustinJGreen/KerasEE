@@ -1,6 +1,7 @@
+import math
 import multiprocessing
 import os
-import math
+
 import keras
 import numpy as np
 import tensorflow as tf
@@ -10,8 +11,9 @@ from keras.layers.normalization import BatchNormalization
 from keras.layers.pooling import MaxPooling2D
 from keras.models import Sequential, load_model
 from keras.optimizers import Adam
+
 import utils
-from loadworker import GanWorldLoader, load_worlds
+from loadworker import load_worlds
 
 
 def autoencoder_model():
@@ -89,7 +91,7 @@ def train(epochs, batch_size, world_count, version_name=None):
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
     model_dir = utils.check_or_create_local_path("auto_encoder", all_models_dir)
 
-    utils.delete_empty_versions(model_dir)
+    utils.delete_empty_versions(model_dir, 1)
     if version_name is None:
         latest = utils.get_latest_version(model_dir)
         version_name = "ver%s" % (latest + 1)

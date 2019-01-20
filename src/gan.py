@@ -146,7 +146,6 @@ def discriminator_model():
     return model
 
 
-
 def generator_containing_discriminator(g, d):
     model = Sequential()
     model.add(g)
