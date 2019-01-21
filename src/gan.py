@@ -123,7 +123,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
     model_dir = utils.check_or_create_local_path("gan", all_models_dir)
 
-    utils.delete_empty_versions(model_dir, 2)
+    utils.delete_empty_versions(model_dir, 1)
     if version_name is None:
         latest = utils.get_latest_version(model_dir)
         version_name = "ver%s" % (latest + 1)
@@ -139,14 +139,12 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print("Saving source...")
     utils.save_source_to_dir(version_dir)
 
-    # Load block images
     print("Loading block images...")
     block_images = utils.load_block_images(res_dir)
 
     print("Loading encoding dictionaries...")
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
-    # Load minimap values
     print("Loading minimap values...")
     minimap_values = utils.load_minimap_values(res_dir)
 
@@ -161,11 +159,17 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     elif os.path.exists("%s\\discriminator.model" % version_dir) and os.path.exists(
             "%s\\generator.model" % version_dir):
         print("Building model with weights...")
+        d_optim = Adam(lr=0.00001)
         d = discriminator_model()
         d.load_weights("%s\\discriminator.model" % version_dir)
+        d.compile(loss="binary_crossentropy", optimizer=d_optim, metrics=["accuracy"])
 
         g = generator_model()
         g.load_weights("%s\\generator.model" % version_dir)
+
+        g_optim = Adam(lr=0.0001, beta_1=0.5)
+        d_on_g = generator_containing_discriminator(g, d)
+        d_on_g.compile(loss="binary_crossentropy", optimizer=g_optim)
     else:
         print("Building model from scratch...")
         d_optim = Adam(lr=0.00001)
@@ -217,7 +221,8 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     x_train = load_worlds(world_count, "%s\\world_repo\\" % res_dir, 64, 64, minimap_values, block_forward, util_cnt)
 
     # Start Training loop
-    number_of_batches = world_count // batch_size
+    world_count = x_train.shape[0]
+    number_of_batches = (world_count - (world_count % batch_size)) // batch_size
 
     for epoch in range(epochs):
 
@@ -316,7 +321,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=32, world_count=1000, initial_epoch=0)
+    train(epochs=100, batch_size=1, world_count=60000, initial_epoch=0)
 
 
 if __name__ == "__main__":
