@@ -47,32 +47,32 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
 
 
 class WorldLoader(Process):
-    fileQueue = None
-    loadQueue = None
-    worldCounter = None
-    targetCount = 0
+    file_queue = None
+    load_queue = None
+    world_counter = None
+    target_count = 0
 
-    genWidth = 0
-    genHeight = 0
-    blockForwardDict = None
-    minimapValues = None
+    gen_width = 0
+    gen_height = 0
+    block_forward = None
+    minimap_values = None
 
-    threadLock = None
+    thread_lock = None
 
-    timePtIndex = 0
-    timePtCnt = 0
+    time_pt_index = 0
+    time_pt_cnt = 0
 
     def update_estimate(self, time_points, time0, time1, cnt0, cnt1):
         cnt_delta = cnt1 - cnt0
-        worlds_left = self.targetCount - self.worldCounter.value
+        worlds_left = self.target_count - self.world_counter.value
         if cnt_delta != 0:
-            time_points[self.timePtIndex] = (time1 - time0) / cnt_delta
-            self.timePtIndex = (self.timePtIndex + 1) % len(time_points)
-            if self.timePtIndex < len(time_points):
-                self.timePtCnt += 1
+            time_points[self.time_pt_index] = (time1 - time0) / cnt_delta
+            self.time_pt_index = (self.time_pt_index + 1) % len(time_points)
+            if self.time_pt_index < len(time_points):
+                self.time_pt_cnt += 1
 
-        if self.timePtCnt > 0:
-            time_left_sec = np.average(time_points[0:self.timePtCnt]) * worlds_left
+        if self.time_pt_cnt > 0:
+            time_left_sec = np.average(time_points[0:self.time_pt_cnt]) * worlds_left
             time_left = time_left_sec / 60.0
             time_left_minutes = int(time_left)
             time_left_minutes_frac = time_left - time_left_minutes
@@ -88,6 +88,7 @@ class WorldLoader(Process):
     def is_good_world(cross_section):
         # Count blocks?
         # Count action blocks?
+        # Diversity of blocks?
         edited_blocks = 0
         width = cross_section.shape[0]
         height = cross_section.shape[1]
@@ -106,17 +107,17 @@ class WorldLoader(Process):
         world_width = world.shape[0]
         world_height = world.shape[1]
 
-        if world_width < self.genWidth or world_height < self.genHeight:
+        if world_width < self.gen_width or world_height < self.gen_height:
             return
 
-        x_margin = world_width % self.genWidth
-        y_margin = world_height % self.genHeight
+        x_margin = world_width % self.gen_width
+        y_margin = world_height % self.gen_height
 
         x_offset = 0
         y_offset = 0
 
-        x_min_increment = 0.5 * self.genWidth
-        y_min_increment = 0.5 * self.genHeight
+        x_min_increment = 1 * self.gen_width
+        y_min_increment = 1 * self.gen_height
 
         if x_margin > 0:
             x_offset = np.random.randint(0, x_margin)
@@ -125,68 +126,68 @@ class WorldLoader(Process):
             y_offset = np.random.randint(0, y_margin)
 
         x_start = x_offset
-        while x_start + self.genWidth < world_width:
+        while x_start + self.gen_width < world_width:
 
             y_start = y_offset
-            while y_start + self.genHeight < world_height:
-                x_end = x_start + self.genWidth
-                y_end = y_start + self.genHeight
+            while y_start + self.gen_height < world_height:
+                x_end = x_start + self.gen_width
+                y_end = y_start + self.gen_height
                 cross_section = world[x_start:x_end, y_start:y_end]
 
                 cross_section0 = cross_section
 
                 if self.is_good_world(cross_section0):
 
-                    encoded_world0 = utils.encode_world2d_binary(self.blockForwardDict, cross_section0, 10)
+                    encoded_world0 = utils.encode_world2d_binary(self.block_forward, cross_section0, 10)
 
                     encoded_worlds = [encoded_world0]
 
-                    self.threadLock.acquire()
+                    self.thread_lock.acquire()
 
                     local_index = 0
-                    while self.worldCounter.value < self.targetCount and local_index < len(encoded_worlds):
-                        self.loadQueue.put(encoded_worlds[local_index])
-                        self.worldCounter.value += 1
+                    while self.world_counter.value < self.target_count and local_index < len(encoded_worlds):
+                        self.load_queue.put(encoded_worlds[local_index])
+                        self.world_counter.value += 1
                         local_index += 1
 
-                    self.threadLock.release()
+                    self.thread_lock.release()
 
                     if local_index == 0:
                         break
 
-                y_start += np.random.randint(y_min_increment, self.genHeight)
+                y_start += np.random.randint(y_min_increment, self.gen_height + 1)
 
-            x_start += np.random.randint(x_min_increment, self.genWidth)
+            x_start += np.random.randint(x_min_increment, self.gen_width + 1)
 
     def __init__(self, file_queue, thread_manager, world_counter, thread_lock, target_count, gen_width, gen_height,
                  block_forward_dict, minimap_values):
         Process.__init__(self)
-        self.fileQueue = file_queue
-        self.loadQueue = thread_manager.Queue()
-        self.worldCounter = world_counter
-        self.threadLock = thread_lock
-        self.targetCount = int(target_count)
-        self.genWidth = gen_width
-        self.genHeight = gen_height
-        self.blockForwardDict = block_forward_dict
-        self.minimapValues = minimap_values
+        self.file_queue = file_queue
+        self.load_queue = thread_manager.Queue()
+        self.world_counter = world_counter
+        self.thread_lock = thread_lock
+        self.target_count = int(target_count)
+        self.gen_width = gen_width
+        self.gen_height = gen_height
+        self.block_forward = block_forward_dict
+        self.minimap_values = minimap_values
 
         self.daemon = True
 
     def run(self):
         time_points = np.array([0.] * 250)
-        while not self.fileQueue.empty() and self.worldCounter.value < self.targetCount:
-            world_file = self.fileQueue.get()
+        while not self.file_queue.empty() and self.world_counter.value < self.target_count:
+            world_file = self.file_queue.get()
             time0 = time.time()
-            cnt0 = self.worldCounter.value
+            cnt0 = self.world_counter.value
             self.load_world(world_file)
             time1 = time.time()
-            cnt1 = self.worldCounter.value
+            cnt1 = self.world_counter.value
             time_est_str = self.update_estimate(time_points, time0, time1, cnt0, cnt1)
-            print("Loaded (%s/%s) %s" % (self.worldCounter.value, self.targetCount, time_est_str))
-            if self.worldCounter.value >= self.targetCount:
+            print("Loaded (%s/%s) %s" % (self.world_counter.value, self.target_count, time_est_str))
+            if self.world_counter.value >= self.target_count:
                 break
         print("Done loading.")
 
     def get_worlds(self):
-        return self.loadQueue
+        return self.load_queue

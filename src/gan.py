@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+import time
 
 import keras
 import numpy as np
@@ -198,7 +199,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     tb_callback.set_model(d_on_g)
 
     # before training init writer (for tensorboard log) / model
-    tb_writer = tf.summary.FileWriter(logdir=graph_dir)
+    tb_writer = tf.summary.FileWriter(logdir=graph_version_dir)
     d_acc_summary = tf.Summary()
     d_acc_summary.value.add(tag='d_acc', simple_value=None)
     d_acc_real_summary = tf.Summary()
@@ -224,6 +225,8 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
 
+    preview_frequency_sec = 5 * 60.0
+
     for epoch in range(epochs):
 
         # Create directories for current epoch
@@ -234,6 +237,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         print("Shuffling data...")
         np.random.shuffle(x_train)
 
+        last_save_time = time.time()
         for minibatch_index in range(number_of_batches):
 
             # Get real set of images
@@ -245,15 +249,6 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
             real_labels = np.ones((batch_size, 1))  # np.random.uniform(0.9, 1.1, size=(batch_size,))
             fake_labels = np.zeros((batch_size, 1))  # np.random.uniform(-0.1, 0.1, size=(batch_size,))
-
-            # Save snapshot of generated images on last batch
-            if minibatch_index == number_of_batches - 1:
-                for batchImage in range(batch_size):
-                    generated_world = fake_worlds[batchImage]
-                    decoded_world = utils.decode_world2d_binary(block_backward, generated_world)
-                    utils.save_world_data(decoded_world, "%s\\world%s.dat" % (cur_worlds_cur, batchImage))
-                    utils.save_world_preview(block_images, decoded_world,
-                                             "%s\\preview%s.png" % (cur_previews_dir, batchImage))
 
             d.trainable = True
 
@@ -310,7 +305,17 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                 epoch, epochs, minibatch_index, number_of_batches, d_avg_acc * 100, d_avg_loss, g_loss))
 
             # Save models
-            if minibatch_index % 100 == 99 or minibatch_index == number_of_batches - 1:
+            time_since_save = time.time() - last_save_time
+            if time_since_save >= preview_frequency_sec or minibatch_index == number_of_batches - 1:
+                print("Saving previews...")
+                for batchImage in range(batch_size):
+                    generated_world = fake_worlds[batchImage]
+                    decoded_world = utils.decode_world2d_binary(block_backward, generated_world)
+                    utils.save_world_data(decoded_world, "%s\\world%s.dat" % (cur_worlds_cur, batchImage))
+                    utils.save_world_preview(block_images, decoded_world,
+                                             "%s\\preview%s.png" % (cur_previews_dir, batchImage))
+
+                print("Saving models...")
                 try:
                     d.save("%s\\discriminator.h5" % cur_models_dir)
                     g.save("%s\\generator.h5" % cur_models_dir)
@@ -319,9 +324,11 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                 except ImportError:
                     print("Failed to save data.")
 
+                last_save_time = time.time()
+
 
 def main():
-    train(epochs=100, batch_size=1, world_count=60000, initial_epoch=0)
+    train(epochs=100, batch_size=1, world_count=100000, initial_epoch=0)
 
 
 if __name__ == "__main__":
