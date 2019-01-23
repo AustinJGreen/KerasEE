@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 from keras.layers import Dense
 from keras.layers import Reshape
+from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.core import Activation, Flatten
 from keras.layers.normalization import BatchNormalization
@@ -22,41 +23,41 @@ def generator_model():
     model = Sequential(name="generator")
 
     model.add(Dense(input_dim=256, units=4 * 4 * 512))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Reshape((4, 4, 512)))
 
     model.add(Conv2DTranspose(512, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Conv2DTranspose(512, kernel_size=3, strides=2, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Conv2DTranspose(256, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Conv2DTranspose(256, kernel_size=3, strides=2, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Conv2DTranspose(128, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Conv2DTranspose(128, kernel_size=3, strides=2, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Conv2DTranspose(64, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Conv2DTranspose(64, kernel_size=3, strides=2, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Conv2DTranspose(10, kernel_size=5, strides=1, padding="same"))
     model.add(Activation('sigmoid'))
@@ -71,31 +72,31 @@ def discriminator_model():
 
     model.add(Conv2D(64, kernel_size=5, strides=1, padding="same", input_shape=(64, 64, 10)))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Conv2D(64, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
     model.add(Conv2D(128, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Conv2D(128, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
     model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    model.add(LeakyReLU())
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
@@ -292,7 +293,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             d.trainable = False
 
             # Training generator on X data, with Y labels
-            noise = np.random.normal(0, 1, (batch_size, 256))
+            noise = np.random.uniform(-1, 1, (batch_size, 256))
 
             # Train generator to generate real
             g_loss = d_on_g.train_on_batch(noise, real_labels)
