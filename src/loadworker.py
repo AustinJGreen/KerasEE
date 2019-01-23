@@ -86,10 +86,10 @@ class WorldLoader(Process):
 
     @staticmethod
     def is_good_world(cross_section):
-        # Count blocks?
-        # Count action blocks?
-        # Diversity of blocks?
+        # - Count blocks
+        # - Diversity of blocks
         edited_blocks = 0
+        distinct_ids = []
         width = cross_section.shape[0]
         height = cross_section.shape[1]
         for x in range(width):
@@ -97,10 +97,12 @@ class WorldLoader(Process):
                 block = cross_section[x, y]
                 if block != 0:
                     edited_blocks += 1
+                if block not in distinct_ids:
+                    distinct_ids.append(block)
 
         total_size = width * height
         required = int(0.4 * total_size)
-        return edited_blocks >= required
+        return edited_blocks >= required and len(distinct_ids) >= 5
 
     def load_world(self, world_file):
         world = utils.load_world_data_ver3(world_file)

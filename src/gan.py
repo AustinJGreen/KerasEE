@@ -27,11 +27,23 @@ def generator_model():
 
     model.add(Reshape((4, 4, 512)))
 
+    model.add(Conv2DTranspose(512, kernel_size=5, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2DTranspose(512, kernel_size=5, strides=2, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2DTranspose(256, kernel_size=5, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
     model.add(Conv2DTranspose(256, kernel_size=5, strides=2, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2DTranspose(128, kernel_size=3, strides=1, padding="same"))
+    model.add(Conv2DTranspose(128, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
@@ -39,19 +51,11 @@ def generator_model():
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2DTranspose(64, kernel_size=3, strides=1, padding="same"))
+    model.add(Conv2DTranspose(64, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
     model.add(Conv2DTranspose(64, kernel_size=5, strides=2, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2DTranspose(32, kernel_size=3, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2DTranspose(32, kernel_size=5, strides=2, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
@@ -67,33 +71,33 @@ def discriminator_model():
     model = Sequential(name="discriminator")
     model.add(keras.layers.InputLayer(input_shape=(64, 64, 10)))
 
-    model.add(Conv2D(64, kernel_size=3, strides=1, padding="same"))
+    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(64, kernel_size=3, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(SpatialDropout2D(0.2))
-
-    model.add(Conv2D(128, kernel_size=3, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2D(128, kernel_size=3, strides=1, padding="same"))
+    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(SpatialDropout2D(0.2))
 
-    model.add(Conv2D(256, kernel_size=3, strides=1, padding="same"))
+    model.add(Conv2D(128, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(256, kernel_size=3, strides=1, padding="same"))
+    model.add(Conv2D(128, kernel_size=5, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(SpatialDropout2D(0.2))
+
+    model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
@@ -227,7 +231,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
     preview_frequency_sec = 5 * 60.0
 
-    for epoch in range(epochs):
+    for epoch in range(initial_epoch, epochs):
 
         # Create directories for current epoch
         cur_worlds_cur = utils.check_or_create_local_path("epoch%s" % epoch, worlds_dir)
@@ -328,7 +332,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=1, world_count=100000, initial_epoch=0)
+    train(epochs=100, batch_size=100, world_count=100000, initial_epoch=0)
 
 
 if __name__ == "__main__":
