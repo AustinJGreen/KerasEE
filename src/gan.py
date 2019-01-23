@@ -7,7 +7,6 @@ import numpy as np
 import tensorflow as tf
 from keras.layers import Dense
 from keras.layers import Reshape
-from keras.layers import SpatialDropout2D
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.core import Activation, Flatten
 from keras.layers.normalization import BatchNormalization
@@ -69,9 +68,8 @@ def generator_model():
 
 def discriminator_model():
     model = Sequential(name="discriminator")
-    model.add(keras.layers.InputLayer(input_shape=(64, 64, 10)))
 
-    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same"))
+    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same", input_shape=(64, 64, 10)))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
@@ -80,7 +78,6 @@ def discriminator_model():
     model.add(Activation('relu'))
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(SpatialDropout2D(0.2))
 
     model.add(Conv2D(128, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
@@ -91,7 +88,6 @@ def discriminator_model():
     model.add(Activation('relu'))
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(SpatialDropout2D(0.2))
 
     model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
@@ -102,7 +98,6 @@ def discriminator_model():
     model.add(Activation('relu'))
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(SpatialDropout2D(0.2))
 
     model.add(Flatten())
 
