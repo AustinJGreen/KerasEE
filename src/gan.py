@@ -293,7 +293,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             d.trainable = False
 
             # Training generator on X data, with Y labels
-            noise = np.random.uniform(-1, 1, (batch_size, 256))
+            noise = np.random.normal(0, 1, (batch_size, 256))
 
             # Train generator to generate real
             g_loss = d_on_g.train_on_batch(noise, real_labels)
