@@ -125,7 +125,8 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     model_dir = utils.check_or_create_local_path("gan", all_models_dir)
 
     utils.delete_empty_versions(model_dir, 1)
-    if version_name is None:
+    no_version = version_name is None
+    if no_version:
         latest = utils.get_latest_version(model_dir)
         version_name = "ver%s" % (latest + 1)
 
@@ -153,20 +154,28 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print("Loading model...")
 
     # Try to load full model, otherwise try to load weights
-    if os.path.exists("%s\\discriminator.h5" % version_dir) and os.path.exists("%s\\generator.h5" % version_dir):
+    cur_models = "%s\\epoch%s" % (model_save_dir, initial_epoch - 1)
+    if os.path.exists("%s\\discriminator.h5" % cur_models) and os.path.exists("%s\\generator.h5" % cur_models):
         print("Building model from files...")
-        d = load_model("%s\\discriminator.h5" % version_dir)
-        g = load_model("%s\\generator.h5" % version_dir)
-    elif os.path.exists("%s\\discriminator.model" % version_dir) and os.path.exists(
-            "%s\\generator.model" % version_dir):
+        d = load_model("%s\\discriminator.h5" % cur_models)
+        g = load_model("%s\\generator.h5" % cur_models)
+
+        if os.path.exists("%s\\d_g.h5" % cur_models):
+            d_on_g = load_model("%s\\d_g.h5" % cur_models)
+        else:
+            g_optim = Adam(lr=0.0001, beta_1=0.5)
+            d_on_g = generator_containing_discriminator(g, d)
+            d_on_g.compile(loss="binary_crossentropy", optimizer=g_optim)
+    elif os.path.exists("%s\\discriminator.weights" % cur_models) and os.path.exists(
+            "%s\\generator.weights" % cur_models):
         print("Building model with weights...")
         d_optim = Adam(lr=0.00001)
         d = discriminator_model()
-        d.load_weights("%s\\discriminator.model" % version_dir)
+        d.load_weights("%s\\discriminator.weights" % cur_models)
         d.compile(loss="binary_crossentropy", optimizer=d_optim, metrics=["accuracy"])
 
         g = generator_model()
-        g.load_weights("%s\\generator.model" % version_dir)
+        g.load_weights("%s\\generator.weights" % cur_models)
 
         g_optim = Adam(lr=0.0001, beta_1=0.5)
         d_on_g = generator_containing_discriminator(g, d)
@@ -184,14 +193,16 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
         d_on_g.compile(loss="binary_crossentropy", optimizer=g_optim)
 
-    # Delete existing worlds and previews if any
-    print("Checking for old generated data...")
-    utils.delete_files_in_path(worlds_dir)
-    utils.delete_files_in_path(previews_dir)
+    if no_version:
+        # Delete existing worlds and previews if any
+        print("Checking for old generated data...")
+        utils.delete_files_in_path(worlds_dir)
+        utils.delete_files_in_path(previews_dir)
 
-    print("Saving model images...")
-    keras.utils.plot_model(d, to_file="%s\\discriminator.png" % version_dir, show_shapes=True, show_layer_names=True)
-    keras.utils.plot_model(g, to_file="%s\\generator.png" % version_dir, show_shapes=True, show_layer_names=True)
+        print("Saving model images...")
+        keras.utils.plot_model(d, to_file="%s\\discriminator.png" % version_dir, show_shapes=True,
+                               show_layer_names=True)
+        keras.utils.plot_model(g, to_file="%s\\generator.png" % version_dir, show_shapes=True, show_layer_names=True)
 
     # Set up tensorboard
     print("Setting up tensorboard...")
@@ -319,8 +330,10 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                 try:
                     d.save("%s\\discriminator.h5" % cur_models_dir)
                     g.save("%s\\generator.h5" % cur_models_dir)
+                    d_on_g.save("%s\\d_g.h5" % cur_models_dir)
                     d.save_weights("%s\\discriminator.weights" % cur_models_dir)
                     g.save_weights("%s\\generator.weights" % cur_models_dir)
+                    d_on_g.save_weights("%s\\d_g.weights" % cur_models_dir)
                 except ImportError:
                     print("Failed to save data.")
 
@@ -328,7 +341,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=100, world_count=100000, initial_epoch=0)
+    train(epochs=100, batch_size=100, world_count=100000, initial_epoch=4, version_name='ver4')
 
 
 if __name__ == "__main__":
