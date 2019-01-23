@@ -30,7 +30,7 @@ def generator_model():
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2DTranspose(512, kernel_size=5, strides=2, padding="same"))
+    model.add(Conv2DTranspose(512, kernel_size=3, strides=2, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
@@ -38,7 +38,7 @@ def generator_model():
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2DTranspose(256, kernel_size=5, strides=2, padding="same"))
+    model.add(Conv2DTranspose(256, kernel_size=3, strides=2, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
@@ -46,7 +46,7 @@ def generator_model():
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2DTranspose(128, kernel_size=5, strides=2, padding="same"))
+    model.add(Conv2DTranspose(128, kernel_size=3, strides=2, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
@@ -54,11 +54,11 @@ def generator_model():
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2DTranspose(64, kernel_size=5, strides=2, padding="same"))
+    model.add(Conv2DTranspose(64, kernel_size=3, strides=2, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2DTranspose(10, kernel_size=3, strides=1, padding="same"))
+    model.add(Conv2DTranspose(10, kernel_size=5, strides=1, padding="same"))
     model.add(Activation('sigmoid'))
 
     model.trainable = True
