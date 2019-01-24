@@ -1,5 +1,6 @@
 import os
 
+import keras
 import numpy as np
 from keras.layers import Dense
 from keras.layers import Reshape
@@ -112,9 +113,10 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
-    model_dir = utils.check_or_create_local_path("gan", all_models_dir)
+    model_dir = utils.check_or_create_local_path("wgan", all_models_dir)
 
     utils.delete_empty_versions(model_dir, 1)
+
     no_version = version_name is None
     if no_version:
         latest = utils.get_latest_version(model_dir)
@@ -142,13 +144,25 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     d = build_discriminator()
     discriminator_model, generator_model, generator = wgan_model.build_wgan(batch_size, g, d, 100, (64, 64, 10))
 
+    if no_version:
+        # Delete existing worlds and previews if any
+        print("Checking for old generated data...")
+        utils.delete_files_in_path(worlds_dir)
+        utils.delete_files_in_path(previews_dir)
+
+        print("Saving model images...")
+        keras.utils.plot_model(d, to_file="%s\\discriminator.png" % version_dir, show_shapes=True,
+                               show_layer_names=True)
+        keras.utils.plot_model(g, to_file="%s\\generator.png" % version_dir, show_shapes=True, show_layer_names=True)
+
     # Load Data
     print("Loading worlds...")
-    x_train = load_worlds(world_count, "%s\\world_repo\\" % res_dir, 64, 64, block_forward, utils.encode_world2d_tanh)
+    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, 64, 64, block_forward, utils.encode_world2d_tanh)
 
     # Start Training loop
     world_count = x_train.shape[0]
-    # number_of_batches = (world_count - (world_count % batch_size)) // batch_size
+    number_of_batches = int(world_count // (batch_size * TRAINING_RATIO))
+    minibatches_size = batch_size * TRAINING_RATIO
 
     # We make three label vectors for training. positive_y is the label vector for real samples, with value 1.
     # negative_y is the label vector for generated samples, with value -1. The dummy_y vector is passed to the
@@ -161,10 +175,9 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
         print("Shuffling data...")
         np.random.shuffle(x_train)
-        print("Epoch: ", epoch)
-        minibatches_size = batch_size * TRAINING_RATIO
 
-        for i in range(world_count // (batch_size * TRAINING_RATIO)):
+        print("Epoch: ", epoch)
+        for i in range(number_of_batches):
             discriminator_minibatches = x_train[i * minibatches_size:(i + 1) * minibatches_size]
             for j in range(TRAINING_RATIO):
                 image_batch = discriminator_minibatches[j * batch_size:(j + 1) * batch_size]
@@ -184,7 +197,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=64, world_count=100000)
+    train(epochs=100, batch_size=64, world_count=1000)
 
 
 if __name__ == "__main__":

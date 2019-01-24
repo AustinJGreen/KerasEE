@@ -18,7 +18,7 @@ from loadworker import load_worlds
 def autoencoder_model():
     model = Sequential(name="autoencoder")
 
-    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same", input_shape=(64, 64, 10)))
+    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same", input_shape=(128, 128, 10)))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
@@ -47,6 +47,24 @@ def autoencoder_model():
     model.add(Activation('relu'))
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
+
+    model.add(Conv2D(512, kernel_size=5, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2D(512, kernel_size=5, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
+    model.add(Conv2DTranspose(512, kernel_size=3, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
+
+    model.add(Conv2DTranspose(512, kernel_size=5, strides=2, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(Activation('relu'))
 
     model.add(Conv2DTranspose(256, kernel_size=3, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
@@ -89,9 +107,10 @@ def train(epochs, batch_size, world_count, version_name=None):
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
     model_dir = utils.check_or_create_local_path("auto_encoder", all_models_dir)
-
     utils.delete_empty_versions(model_dir, 1)
-    if version_name is None:
+
+    no_version = version_name is None
+    if no_version:
         latest = utils.get_latest_version(model_dir)
         version_name = "ver%s" % (latest + 1)
 
@@ -135,10 +154,11 @@ def train(epochs, batch_size, world_count, version_name=None):
         ae_optim = Adam(lr=0.0001)
         ae.compile(loss="binary_crossentropy", optimizer=ae_optim)
 
-    # Delete existing worlds and previews if any
-    print("Checking for old generated data...")
-    utils.delete_files_in_path(worlds_dir)
-    utils.delete_files_in_path(previews_dir)
+    if no_version:
+        # Delete existing worlds and previews if any
+        print("Checking for old generated data...")
+        utils.delete_files_in_path(worlds_dir)
+        utils.delete_files_in_path(previews_dir)
 
     print("Saving model images...")
     keras.utils.plot_model(ae, to_file="%s\\autoencoder.png" % version_dir, show_shapes=True, show_layer_names=True)
@@ -155,7 +175,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
     # Load Data
     print("Loading worlds...")
-    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, 64, 64, block_forward, utils.encode_world2d_sigmoid)
+    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, 128, 128, block_forward, utils.encode_world2d_sigmoid)
 
     # Start Training loop
     world_count = x_train.shape[0]
@@ -217,7 +237,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
 
 def main():
-    train(epochs=100, batch_size=64, world_count=60000)
+    train(epochs=100, batch_size=32, world_count=50000)
 
 
 if __name__ == "__main__":

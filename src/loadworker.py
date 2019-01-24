@@ -177,7 +177,7 @@ class WorldLoader(Process):
         self.gen_width = gen_width
         self.gen_height = gen_height
         self.block_forward = block_forward_dict
-
+        self.encode_func = encode_func
         self.daemon = True
 
     def run(self):

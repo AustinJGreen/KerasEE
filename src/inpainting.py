@@ -18,7 +18,9 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     model_dir = utils.check_or_create_local_path("inpainting", all_models_dir)
 
     utils.delete_empty_versions(model_dir, 0)
-    if version_name is None:
+
+    no_version = version_name is None
+    if no_version:
         latest = utils.get_latest_version(model_dir)
         version_name = "ver%s" % (latest + 1)
 
@@ -55,10 +57,11 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     unet.summary()
     # pconv_unet.load_weights('%s\\ver43\\models\\epoch4\\unet.weights' % contextnet_dir)
 
-    # Delete existing worlds and previews if any
-    print("Checking for old generated data...")
-    utils.delete_files_in_path(worlds_dir)
-    utils.delete_files_in_path(previews_dir)
+    if no_version:
+        # Delete existing worlds and previews if any
+        print("Checking for old generated data...")
+        utils.delete_files_in_path(worlds_dir)
+        utils.delete_files_in_path(previews_dir)
 
     print("Saving model images...")
     keras.utils.plot_model(unet, to_file="%s\\unet.png" % version_dir, show_shapes=True,
@@ -74,8 +77,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     cpu_count = multiprocessing.cpu_count()
     utilization_count = cpu_count - 1
     print("Loading worlds using %s cores." % utilization_count)
-    x_train = load_worlds(world_count, "%s\\world_repo\\" % res_dir, 64, 64, block_forward, utilization_count,
-                          utils.encode_world2d_sigmoid)
+    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, 64, 64, block_forward, utils.encode_world2d_sigmoid)
 
     # Start Training loop
     world_count = x_train.shape[0]
