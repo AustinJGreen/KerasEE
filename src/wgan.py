@@ -1,47 +1,10 @@
-import multiprocessing
 import os
-import random
 
 import numpy as np
 
 from src import utils, wgan_model
-from src.loadworker import WorldLoader
 
 TRAINING_RATIO = 5  # The training ratio is the number of discriminator updates per generator update. The paper uses 5.
-
-
-def load_worlds(load_count, world_directory, gen_width, gen_height, block_forward_dict, minimap_values, thread_count):
-    world_names = os.listdir(world_directory)
-    random.shuffle(world_names)
-
-    with multiprocessing.Manager() as manager:
-        file_queue = manager.Queue()
-
-        for name in world_names:
-            file_queue.put(world_directory + name)
-
-        world_array = np.zeros((load_count, gen_width, gen_height, 11), dtype=np.int8)
-
-        world_counter = multiprocessing.Value('i', 0)
-        thread_lock = multiprocessing.Lock()
-
-        threads = [None] * thread_count
-        for thread in range(thread_count):
-            load_thread = WorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_width,
-                                      gen_height, block_forward_dict, minimap_values)
-            load_thread.start()
-            threads[thread] = load_thread
-
-        world_index = 0
-        for thread in range(thread_count):
-            threads[thread].join()
-
-            thread_load_queue = threads[thread].get_worlds()
-            while thread_load_queue.qsize() > 0:
-                world_array[world_index] = thread_load_queue.get()
-                world_index += 1
-
-    return world_array
 
 
 def train(epochs, batch_size, world_count, version_name=None):

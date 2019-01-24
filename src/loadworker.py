@@ -79,8 +79,8 @@ class WorldLoader(Process):
             time_left_seconds = math.ceil(time_left_minutes_frac * 60)
             if time_left_minutes > 1:
                 return "ETA %i minutes" % time_left_minutes
-            elif time_left_minutes > 0:
-                return "ETA %i minute" % time_left_minutes
+            elif time_left_minutes == 1:
+                return "ETA 1 minute"
             else:
                 return "ETA %i seconds" % time_left_seconds  # "ETA <1 Minute"
         else:

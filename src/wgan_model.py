@@ -2,14 +2,9 @@ from functools import partial
 
 import keras.backend as K
 import numpy as np
-from keras.layers import Dense
-from keras.layers import LeakyReLU
-from keras.layers import Reshape, Input
-from keras.layers.convolutional import Conv2DTranspose, Conv2D
-from keras.layers.core import Flatten
+from keras.layers import Input
 from keras.layers.merge import _Merge
-from keras.layers.normalization import BatchNormalization
-from keras.models import Sequential, Model
+from keras.models import Model
 from keras.optimizers import Adam
 
 BATCH_SIZE = 64
@@ -60,67 +55,6 @@ def wasserstein_loss(y_true, y_pred):
     return K.mean(y_true * y_pred)
 
 
-def build_generator():
-    model = Sequential()
-
-    model.add(Dense(1024, input_dim=100))
-    model.add(LeakyReLU())
-
-    model.add(Dense(8 * 8 * 128))
-    model.add(BatchNormalization())
-    model.add(LeakyReLU())
-
-    model.add(Reshape((8, 8, 128)))
-
-    model.add(Conv2DTranspose(128, (5, 5), strides=2, padding='same'))
-    model.add(BatchNormalization())
-    model.add(LeakyReLU())
-
-    model.add(Conv2D(64, (5, 5), padding='same'))
-    model.add(BatchNormalization())
-    model.add(LeakyReLU())
-
-    model.add(Conv2DTranspose(64, (5, 5), strides=2, padding='same'))
-    model.add(BatchNormalization())
-    model.add(LeakyReLU())
-
-    model.add(Conv2D(32, (5, 5), padding='same'))
-    model.add(BatchNormalization())
-    model.add(LeakyReLU())
-
-    model.add(Conv2DTranspose(32, (5, 5), strides=2, padding='same'))
-    model.add(BatchNormalization())
-    model.add(LeakyReLU())
-
-    model.add(Conv2D(11, (5, 5), padding='same', activation='tanh'))
-
-    model.summary()
-    return model
-
-
-def build_discriminator():
-    model = Sequential()
-
-    model.add(Conv2D(64, (5, 5), padding='same', input_shape=(64, 64, 11)))
-    model.add(LeakyReLU())
-
-    model.add(Conv2D(128, (5, 5), kernel_initializer='he_normal', strides=[2, 2]))
-    model.add(LeakyReLU())
-
-    model.add(Conv2D(128, (5, 5), kernel_initializer='he_normal', padding='same', strides=[2, 2]))
-    model.add(LeakyReLU())
-
-    model.add(Flatten())
-
-    model.add(Dense(1024, kernel_initializer='he_normal'))
-    model.add(LeakyReLU())
-
-    model.add(Dense(1, kernel_initializer='he_normal'))
-
-    model.summary()
-    return model
-
-
 class RandomWeightedAverage(_Merge):
     """Takes a randomly-weighted average of two tensors. In geometric terms, this outputs a random point on the line
     between each pair of input points.
@@ -132,13 +66,13 @@ class RandomWeightedAverage(_Merge):
         return (weights * inputs[0]) + ((1 - weights) * inputs[1])
 
 
-def build_wgan(batch_size):
+def build_wgan(batch_size, g_model, d_model, latent_size, input_shape):
     global BATCH_SIZE
     BATCH_SIZE = batch_size
 
     # Now we initialize the generator and discriminator.
-    generator = build_generator()
-    discriminator = build_discriminator()
+    generator = g_model
+    discriminator = d_model
 
     # The generator_model is used when we want to train the generator layers.
     # As such, we ensure that the discriminator layers are not trainable.
@@ -149,7 +83,7 @@ def build_wgan(batch_size):
         layer.trainable = False
     discriminator.trainable = False
 
-    generator_input = Input(shape=(100,))
+    generator_input = Input(shape=(latent_size,))
     generator_layers = generator(generator_input)
     discriminator_layers_for_generator = discriminator(generator_layers)
     generator_model = Model(inputs=[generator_input], outputs=[discriminator_layers_for_generator])
@@ -168,8 +102,8 @@ def build_wgan(batch_size):
     # The noise seed is run through the generator model to get generated images. Both real and generated images
     # are then run through the discriminator. Although we could concatenate the real and generated images into a
     # single tensor, we don't (see model compilation for why).
-    real_samples = Input(shape=(64, 64, 11))
-    generator_input_for_discriminator = Input(shape=(100,))
+    real_samples = Input(shape=input_shape)
+    generator_input_for_discriminator = Input(shape=(latent_size,))
     generated_samples_for_discriminator = generator(generator_input_for_discriminator)
     discriminator_output_from_generator = discriminator(generated_samples_for_discriminator)
     discriminator_output_from_real_samples = discriminator(real_samples)
