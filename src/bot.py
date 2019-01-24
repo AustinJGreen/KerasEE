@@ -72,14 +72,14 @@ def build_for(r, player_id):
 
     utils.save_world_preview(block_images, input_data, '%s\\input.png' % cur_dir)
 
-    encoded_input = utils.encode_world2d_binary(block_forward, input_data, 10)
+    encoded_input = utils.encode_world2d_sigmoid(block_forward, input_data, 10)
     encoded_input[input_mask == 0] = 1
 
     encoded_context_data = None
     with graph.as_default():
         encoded_context_data = pconv_unet.predict([[encoded_input], [input_mask]])
 
-    context_data = utils.decode_world2d_binary(block_backward, encoded_context_data[0])
+    context_data = utils.decode_world2d_sigmoid(block_backward, encoded_context_data[0])
     utils.save_world_preview(block_images, context_data, '%s\\real.png' % cur_dir)
 
     for i in range(len(coords)):

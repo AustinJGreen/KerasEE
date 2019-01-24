@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 
 import keras
@@ -224,11 +223,9 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     h_loss_summary.value.add(tag='h_loss', simple_value=None)
 
     # Load Data
-    cpu_count = multiprocessing.cpu_count()
-    utilization_count = cpu_count - 1
-    print("Loading worlds using %s cores." % utilization_count)
-    x_train = load_worlds(world_count, "%s\\world_repo\\" % res_dir, 64, 64, minimap_values, block_forward,
-                          utilization_count)
+    print("Loading worlds...")
+    x_train = load_worlds(world_count, "%s\\world_repo\\" % res_dir, 64, 64, block_forward,
+                          utils.encode_world2d_sigmoid)
 
     # Start Training loop
     world_count = x_train.shape[0]
@@ -289,12 +286,12 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
             if minibatch_index % 1000 == 999 or minibatch_index == number_of_batches - 1:
                 actual_world = world_batch_masked[0]
-                a_decoded = utils.decode_world2d_binary(block_backward, actual_world)
+                a_decoded = utils.decode_world2d_sigmoid(block_backward, actual_world)
                 utils.save_world_preview(block_images, a_decoded,
                                          '%s\\actual%s.png' % (cur_previews_dir, minibatch_index))
 
                 gen_world = generated[1][0]
-                decoded = utils.decode_world2d_binary(block_backward, gen_world)
+                decoded = utils.decode_world2d_sigmoid(block_backward, gen_world)
                 utils.save_world_preview(block_images, decoded,
                                          '%s\\preview%s.png' % (cur_previews_dir, minibatch_index))
 

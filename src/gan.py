@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 import time
 
@@ -227,10 +226,8 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     g_loss_summary.value.add(tag='g_loss', simple_value=None)
 
     # Load Data
-    cpu_count = multiprocessing.cpu_count()
-    util_cnt = cpu_count - 1
-    print("Loading worlds using %s cores." % util_cnt)
-    x_train = load_worlds(world_count, "%s\\world_repo\\" % res_dir, 64, 64, minimap_values, block_forward, util_cnt)
+    print("Loading worlds...")
+    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, 64, 64, block_forward, utils.encode_world2d_sigmoid)
 
     # Start Training loop
     world_count = x_train.shape[0]
@@ -321,7 +318,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                 print("Saving previews...")
                 for batchImage in range(batch_size):
                     generated_world = fake_worlds[batchImage]
-                    decoded_world = utils.decode_world2d_binary(block_backward, generated_world)
+                    decoded_world = utils.decode_world2d_sigmoid(block_backward, generated_world)
                     utils.save_world_data(decoded_world, "%s\\world%s.dat" % (cur_worlds_cur, batchImage))
                     utils.save_world_preview(block_images, decoded_world,
                                              "%s\\preview%s.png" % (cur_previews_dir, batchImage))

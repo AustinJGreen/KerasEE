@@ -74,7 +74,8 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     cpu_count = multiprocessing.cpu_count()
     utilization_count = cpu_count - 1
     print("Loading worlds using %s cores." % utilization_count)
-    x_train = load_worlds(world_count, "%s\\world_repo\\" % res_dir, 64, 64, minimap_values, block_forward, utilization_count)
+    x_train = load_worlds(world_count, "%s\\world_repo\\" % res_dir, 64, 64, block_forward, utilization_count,
+                          utils.encode_world2d_sigmoid)
 
     # Start Training loop
     world_count = x_train.shape[0]
@@ -109,13 +110,13 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                 # Save previews
                 test = unet.predict([world_batch_masked, world_masks])
 
-                d0 = utils.decode_world2d_binary(block_backward, world_batch[0])
+                d0 = utils.decode_world2d_sigmoid(block_backward, world_batch[0])
                 utils.save_world_preview(block_images, d0, '%s\\%s_orig.png' % (cur_previews_dir, minibatch_index))
 
-                d1 = utils.decode_world2d_binary(block_backward, test[0])
+                d1 = utils.decode_world2d_sigmoid(block_backward, test[0])
                 utils.save_world_preview(block_images, d1, '%s\\%s_fixed.png' % (cur_previews_dir, minibatch_index))
 
-                d2 = utils.decode_world2d_binary(block_backward, world_batch_masked[0])
+                d2 = utils.decode_world2d_sigmoid(block_backward, world_batch_masked[0])
                 utils.save_world_preview(block_images, d2, '%s\\%s_masked.png' % (cur_previews_dir, minibatch_index))
 
             loss = unet.train_on_batch([world_batch_masked, world_masks], world_batch)

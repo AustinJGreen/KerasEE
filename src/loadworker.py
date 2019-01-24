@@ -2,16 +2,18 @@ import math
 import os
 import random
 import time
-from multiprocessing import Process, Manager, Value, Lock
+from multiprocessing import Process, Manager, Value, Lock, cpu_count
 
 import numpy as np
 
 import utils
 
 
-def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_values, block_forward, thread_count):
+def load_worlds(load_count, world_directory, gen_width, gen_height, block_forward, encode_func):
     world_names = os.listdir(world_directory)
     random.shuffle(world_names)
+
+    thread_count = cpu_count() - 1
 
     with Manager() as manager:
         file_queue = manager.Queue()
@@ -24,15 +26,15 @@ def load_worlds(load_count, world_directory, gen_width, gen_height, minimap_valu
         world_counter = Value('i', 0)
         thread_lock = Lock()
 
-        threads = [None] * thread_count
+        threads = []
         for thread in range(thread_count):
             load_thread = WorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_width,
-                                      gen_height, block_forward, minimap_values)
+                                      gen_height, block_forward, encode_func)
             load_thread.start()
-            threads[thread] = load_thread
+            threads.append(load_thread)
 
         world_index = 0
-        for thread in range(thread_count):
+        for thread in range(len(threads)):
             threads[thread].join()
             print("Thread %s joined." % thread)
             thread_load_queue = threads[thread].get_worlds()
@@ -55,7 +57,8 @@ class WorldLoader(Process):
     gen_width = 0
     gen_height = 0
     block_forward = None
-    minimap_values = None
+
+    encode_func = None
 
     thread_lock = None
 
@@ -142,7 +145,7 @@ class WorldLoader(Process):
 
                 if self.is_good_world(cross_section0):
 
-                    encoded_world0 = utils.encode_world2d_binary(self.block_forward, cross_section0, 10)
+                    encoded_world0 = self.encode_func(self.block_forward, cross_section0)
 
                     encoded_worlds = [encoded_world0]
 
@@ -164,7 +167,7 @@ class WorldLoader(Process):
             x_start += np.random.randint(x_min_increment, self.gen_width + 1)
 
     def __init__(self, file_queue, thread_manager, world_counter, thread_lock, target_count, gen_width, gen_height,
-                 block_forward_dict, minimap_values):
+                 block_forward_dict, encode_func):
         Process.__init__(self)
         self.file_queue = file_queue
         self.load_queue = thread_manager.Queue()
@@ -174,7 +177,6 @@ class WorldLoader(Process):
         self.gen_width = gen_width
         self.gen_height = gen_height
         self.block_forward = block_forward_dict
-        self.minimap_values = minimap_values
 
         self.daemon = True
 

@@ -151,7 +151,7 @@ def decode_world2d(block_backward_dict, world_data):
     return world_copy
 
 
-def decode_world2d_binary(block_backward, world_data):
+def decode_world2d_sigmoid(block_backward, world_data):
     bits = world_data.shape[2]
     width = world_data.shape[0]
     height = world_data.shape[1]
@@ -164,6 +164,31 @@ def decode_world2d_binary(block_backward, world_data):
 
                 bit_value = 0
                 if bit_data >= 0.5:
+                    bit_value = 1
+                value = value | (bit_value << ((bits - 1) - bit))
+
+            if value in block_backward:
+                value = block_backward[value]
+            else:
+                value = 0
+
+            world_copy[x, y] = int(value)
+    return world_copy
+
+
+def decode_world2d_tanh(block_backward, world_data):
+    bits = world_data.shape[2]
+    width = world_data.shape[0]
+    height = world_data.shape[1]
+    world_copy = np.zeros((width, height), dtype=int)
+    for y in range(height):
+        for x in range(width):
+            value = 0
+            for bit in range(bits):
+                bit_data = world_data[x, y, bit]
+
+                bit_value = 0
+                if bit_data > 0:
                     bit_value = 1
                 value = value | (bit_value << ((bits - 1) - bit))
 
@@ -212,9 +237,10 @@ def encode_world2d(block_forward_dict, world_data):
     return world_copy
 
 
-def encode_world2d_binary(block_forward, world_data, bits):
+def encode_world2d_sigmoid(block_forward, world_data):
     width = world_data.shape[0]
     height = world_data.shape[1]
+    bits = 10
     world_copy = np.zeros((width, height, bits), dtype=np.int8)
 
     if len(world_data.shape) == 2:
@@ -227,7 +253,39 @@ def encode_world2d_binary(block_forward, world_data, bits):
                     value = 0
                 for bit in range(bits):
                     bit_value = (value >> bit) & 1
-                    bit_value_reshaped = bit_value  # (bit_value * 2) - 1
+                    world_copy[x, y, bits - 1 - bit] = bit_value  # [0, 1]
+    elif len(world_data.shape) == 3:  # Just take foreground
+        for y in range(height):
+            for x in range(width):
+                value = int(world_data[x, y, 0])
+                if value in block_forward:
+                    value = block_forward[value]
+                else:
+                    value = 0
+                for bit in range(bits):
+                    bit_value = (value >> bit) & 1
+                    world_copy[x, y, bits - 1 - bit] = bit_value  # [0, 1]
+
+    return world_copy
+
+
+def encode_world2d_tanh(block_forward, world_data):
+    width = world_data.shape[0]
+    height = world_data.shape[1]
+    bits = 10
+    world_copy = np.zeros((width, height, bits), dtype=np.int8)
+
+    if len(world_data.shape) == 2:
+        for y in range(height):
+            for x in range(width):
+                value = int(world_data[x, y])
+                if value in block_forward:
+                    value = block_forward[value]
+                else:
+                    value = 0
+                for bit in range(bits):
+                    bit_value = (value >> bit) & 1
+                    bit_value_reshaped = (bit_value * 2) - 1
                     world_copy[x, y, bits - 1 - bit] = bit_value_reshaped  # [-1, 1]
     elif len(world_data.shape) == 3:  # Just take foreground
         for y in range(height):
@@ -239,7 +297,7 @@ def encode_world2d_binary(block_forward, world_data, bits):
                     value = 0
                 for bit in range(bits):
                     bit_value = (value >> bit) & 1
-                    bit_value_reshaped = bit_value  # (bit_value * 2) - 1
+                    bit_value_reshaped = (bit_value * 2) - 1
                     world_copy[x, y, bits - 1 - bit] = bit_value_reshaped  # [-1, 1]
 
     return world_copy
@@ -570,7 +628,7 @@ def rotate_world90(world_data):
 
 def save_train_data(train_data, block_images, base_dir):
     for i in range(train_data.shape[0]):
-        decoded_world = decode_world2d_binary(train_data[i])
+        decoded_world = decode_world2d_sigmoid(train_data[i])
         save_world_preview(block_images, decoded_world, '%s\\image%s.png' % (base_dir, i))
 
 

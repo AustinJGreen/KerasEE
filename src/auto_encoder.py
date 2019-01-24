@@ -1,5 +1,4 @@
 import math
-import multiprocessing
 import os
 
 import keras
@@ -114,13 +113,8 @@ def train(epochs, batch_size, world_count, version_name=None):
     print("Loading encoding dictionaries...")
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
-    # Load minimap values
-    print("Loading minimap values...")
-    minimap_values = utils.load_minimap_values(res_dir)
-
     # Load model and existing weights
     print("Loading model...")
-    ae = None
 
     # Try to load full model, otherwise try to load weights
     if os.path.exists("%s\\autoencoder.h5" % version_dir):
@@ -160,11 +154,8 @@ def train(epochs, batch_size, world_count, version_name=None):
     ae_loss.value.add(tag='ae_loss', simple_value=None)
 
     # Load Data
-    cpu_count = multiprocessing.cpu_count()
-    utilization_count = cpu_count - 1
-    print("Loading worlds using %s cores." % utilization_count)
-    x_train = load_worlds(world_count, "%s\\world_repo\\" % res_dir, 64, 64, minimap_values, block_forward,
-                          utilization_count)
+    print("Loading worlds...")
+    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, 64, 64, block_forward, utils.encode_world2d_sigmoid)
 
     # Start Training loop
     world_count = x_train.shape[0]
@@ -196,7 +187,7 @@ def train(epochs, batch_size, world_count, version_name=None):
                 # Save samples
                 for batchImage in range(batch_size):
                     generated_world = generated[batchImage]
-                    decoded_world = utils.decode_world2d_binary(block_backward, generated_world)
+                    decoded_world = utils.decode_world2d_sigmoid(block_backward, generated_world)
                     utils.save_world_data(decoded_world, "%s\\world%s.dat" % (cur_worlds_cur, batchImage))
                     utils.save_world_preview(block_images, decoded_world,
                                              "%s\\preview%s.png" % (cur_previews_dir, batchImage))
@@ -204,7 +195,7 @@ def train(epochs, batch_size, world_count, version_name=None):
                 # Save actual worlds
                 for batchImage in range(batch_size):
                     actual_world = world_batch[batchImage]
-                    decoded_world = utils.decode_world2d_binary(block_backward, actual_world)
+                    decoded_world = utils.decode_world2d_sigmoid(block_backward, actual_world)
                     utils.save_world_preview(block_images, decoded_world,
                                              "%s\\actual%s.png" % (cur_previews_dir, batchImage))
 
