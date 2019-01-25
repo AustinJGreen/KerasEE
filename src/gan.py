@@ -319,7 +319,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                 for batchImage in range(batch_size):
                     generated_world = fake_worlds[batchImage]
                     decoded_world = utils.decode_world2d_sigmoid(block_backward, generated_world)
-                    utils.save_world_data(decoded_world, "%s\\world%s.dat" % (cur_worlds_cur, batchImage))
+                    utils.save_world_data(decoded_world, "%s\\world%s.world" % (cur_worlds_cur, batchImage))
                     utils.save_world_preview(block_images, decoded_world,
                                              "%s\\preview%s.png" % (cur_previews_dir, batchImage))
 
