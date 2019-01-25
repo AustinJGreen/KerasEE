@@ -77,7 +77,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     cpu_count = multiprocessing.cpu_count()
     utilization_count = cpu_count - 1
     print("Loading worlds using %s cores." % utilization_count)
-    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, 64, 64, block_forward, utils.encode_world2d_sigmoid)
+    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, (64, 64), block_forward, utils.encode_world_sigmoid)
 
     # Start Training loop
     world_count = x_train.shape[0]

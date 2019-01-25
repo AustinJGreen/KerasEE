@@ -157,7 +157,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
     # Load Data
     print("Loading worlds...")
-    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, 64, 64, block_forward, utils.encode_world2d_tanh)
+    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, (64, 64), block_forward, utils.encode_world_tanh)
 
     # Start Training loop
     world_count = x_train.shape[0]

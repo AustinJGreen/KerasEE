@@ -237,7 +237,7 @@ def encode_world2d(block_forward_dict, world_data):
     return world_copy
 
 
-def encode_world2d_sigmoid(block_forward, world_data):
+def encode_world_sigmoid(block_forward, world_data):
     width = world_data.shape[0]
     height = world_data.shape[1]
     bits = 10
@@ -269,7 +269,7 @@ def encode_world2d_sigmoid(block_forward, world_data):
     return world_copy
 
 
-def encode_world2d_tanh(block_forward, world_data):
+def encode_world_tanh(block_forward, world_data):
     width = world_data.shape[0]
     height = world_data.shape[1]
     bits = 10
@@ -595,6 +595,11 @@ def save_source_to_dir(base_dir):
     for path in os.listdir(cur_dir):
         if os.path.isfile(path):
             copyfile(path, "%s\\%s" % (source_dir, path))
+
+
+def get_world_id(world_file):
+    base = os.path.basename(world_file)
+    return os.path.splitext(base)[0]
 
 
 def get_latest_version(directory):

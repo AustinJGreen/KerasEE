@@ -72,7 +72,7 @@ def build_for(r, player_id):
 
     utils.save_world_preview(block_images, input_data, '%s\\input.png' % cur_dir)
 
-    encoded_input = utils.encode_world2d_sigmoid(block_forward, input_data, 10)
+    encoded_input = utils.encode_world_sigmoid(block_forward, input_data, 10)
     encoded_input[input_mask == 0] = 1
 
     encoded_context_data = None
