@@ -47,17 +47,14 @@ def load_worlds(load_count, world_directory, gen_size, block_forward, encode_fun
     return world_array
 
 
-def load_worlds_with_labels(load_count, world_directory, gen_size, block_forward, encode_func, label_dict):
-    world_names = os.listdir(world_directory)
-    random.shuffle(world_names)
-
+def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, block_forward, encode_func):
     thread_count = cpu_count() - 1
 
     with Manager() as manager:
         file_queue = manager.Queue()
 
-        for name in world_names:
-            file_queue.put(world_directory + name)
+        for world_id in label_dict.keys():
+            file_queue.put('%s\\%s.world' % (world_directory, world_id))
 
         world_array = np.zeros((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
         world_labels = np.zeros((load_count, 1), dtype=np.int8)
@@ -77,10 +74,11 @@ def load_worlds_with_labels(load_count, world_directory, gen_size, block_forward
             threads[thread].join()
             print("Thread [%s] joined." % thread)
             thread_load_queue = threads[thread].get_worlds()
-            label_load_queue = threads[thread].get_
+            label_load_queue = threads[thread].get_labels()
             print("Adding Thread [%s] queue." % thread)
             while thread_load_queue.qsize() > 0:
                 world_array[world_index] = thread_load_queue.get()
+                world_labels[world_index] = label_load_queue.get()
                 world_index += 1
 
         world_array = world_array[:world_index, :, :, :]

@@ -18,7 +18,7 @@ import utils
 from loadworker import load_worlds
 
 
-def generator_model():
+def build_generator():
     model = Sequential(name="generator")
 
     model.add(Dense(input_dim=256, units=4 * 4 * 512))
@@ -66,7 +66,7 @@ def generator_model():
     return model
 
 
-def discriminator_model():
+def build_discriminator():
     model = Sequential(name="discriminator")
 
     model.add(Conv2D(64, kernel_size=5, strides=1, padding="same", input_shape=(64, 64, 10)))
@@ -169,11 +169,11 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             "%s\\generator.weights" % cur_models):
         print("Building model with weights...")
         d_optim = Adam(lr=0.00001)
-        d = discriminator_model()
+        d = build_discriminator()
         d.load_weights("%s\\discriminator.weights" % cur_models)
         d.compile(loss="binary_crossentropy", optimizer=d_optim, metrics=["accuracy"])
 
-        g = generator_model()
+        g = build_generator()
         g.load_weights("%s\\generator.weights" % cur_models)
 
         g_optim = Adam(lr=0.0001, beta_1=0.5)
@@ -184,10 +184,10 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         d_optim = Adam(lr=0.00001)
         g_optim = Adam(lr=0.0001, beta_1=0.5)
 
-        d = discriminator_model()
+        d = build_discriminator()
         d.compile(loss="binary_crossentropy", optimizer=d_optim, metrics=["accuracy"])
 
-        g = generator_model()
+        g = build_generator()
         d_on_g = generator_containing_discriminator(g, d)
 
         d_on_g.compile(loss="binary_crossentropy", optimizer=g_optim)
@@ -318,7 +318,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                 print("Saving previews...")
                 for batchImage in range(batch_size):
                     generated_world = fake_worlds[batchImage]
-                    decoded_world = utils.decode_world2d_sigmoid(block_backward, generated_world)
+                    decoded_world = utils.decode_world_sigmoid(block_backward, generated_world)
                     utils.save_world_data(decoded_world, "%s\\world%s.world" % (cur_worlds_cur, batchImage))
                     utils.save_world_preview(block_images, decoded_world,
                                              "%s\\preview%s.png" % (cur_previews_dir, batchImage))

@@ -288,12 +288,12 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
             if minibatch_index % 1000 == 999 or minibatch_index == number_of_batches - 1:
                 actual_world = world_batch_masked[0]
-                a_decoded = utils.decode_world2d_sigmoid(block_backward, actual_world)
+                a_decoded = utils.decode_world_sigmoid(block_backward, actual_world)
                 utils.save_world_preview(block_images, a_decoded,
                                          '%s\\actual%s.png' % (cur_previews_dir, minibatch_index))
 
                 gen_world = generated[1][0]
-                decoded = utils.decode_world2d_sigmoid(block_backward, gen_world)
+                decoded = utils.decode_world_sigmoid(block_backward, gen_world)
                 utils.save_world_preview(block_images, decoded,
                                          '%s\\preview%s.png' % (cur_previews_dir, minibatch_index))
 

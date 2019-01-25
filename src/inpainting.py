@@ -112,13 +112,13 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                 # Save previews
                 test = unet.predict([world_batch_masked, world_masks])
 
-                d0 = utils.decode_world2d_sigmoid(block_backward, world_batch[0])
+                d0 = utils.decode_world_sigmoid(block_backward, world_batch[0])
                 utils.save_world_preview(block_images, d0, '%s\\%s_orig.png' % (cur_previews_dir, minibatch_index))
 
-                d1 = utils.decode_world2d_sigmoid(block_backward, test[0])
+                d1 = utils.decode_world_sigmoid(block_backward, test[0])
                 utils.save_world_preview(block_images, d1, '%s\\%s_fixed.png' % (cur_previews_dir, minibatch_index))
 
-                d2 = utils.decode_world2d_sigmoid(block_backward, world_batch_masked[0])
+                d2 = utils.decode_world_sigmoid(block_backward, world_batch_masked[0])
                 utils.save_world_preview(block_images, d2, '%s\\%s_masked.png' % (cur_previews_dir, minibatch_index))
 
             loss = unet.train_on_batch([world_batch_masked, world_masks], world_batch)

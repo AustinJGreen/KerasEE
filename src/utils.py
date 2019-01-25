@@ -52,6 +52,37 @@ def load_encoding_dict(base_dir, name):
     return block_forward_dict, block_backward_dict
 
 
+def load_label_dict(base_dir, name):
+    label_dict = {}
+
+    with open("%s\\%s.txt" % (base_dir, name)) as fp:
+        line = fp.readline()
+        while line:
+            split_index = line.rindex(' ')
+            world = line[:split_index]
+            label = int(line[split_index + 1:])
+            label_dict[world] = label
+            line = fp.readline()
+
+    return label_dict
+
+
+def convert_labels(raw_labels, categories=10, epsilon=1e-10):
+    # Use label smoothing
+    # http://www.deeplearningbook.org/contents/regularization.html
+    # Section 7.5.1
+    fill_value = epsilon / (categories - 1)
+    hot_value = 1 - epsilon
+    label_count = raw_labels.shape[0]
+
+    soft_labels = np.full((label_count, categories), fill_value=fill_value, dtype=float)
+
+    for label in range(label_count):
+        soft_labels[label, raw_labels[label]] = hot_value
+
+    return soft_labels
+
+
 def random_mask_high(height, width, channels=11):
     """Generates a random irregular mask based off of rectangles"""
     mask = np.zeros((height, width, channels), np.int8)
@@ -151,7 +182,7 @@ def decode_world2d(block_backward_dict, world_data):
     return world_copy
 
 
-def decode_world2d_sigmoid(block_backward, world_data):
+def decode_world_sigmoid(block_backward, world_data):
     bits = world_data.shape[2]
     width = world_data.shape[0]
     height = world_data.shape[1]
@@ -176,7 +207,7 @@ def decode_world2d_sigmoid(block_backward, world_data):
     return world_copy
 
 
-def decode_world2d_tanh(block_backward, world_data):
+def decode_world_tanh(block_backward, world_data):
     bits = world_data.shape[2]
     width = world_data.shape[0]
     height = world_data.shape[1]
@@ -633,7 +664,7 @@ def rotate_world90(world_data):
 
 def save_train_data(train_data, block_images, base_dir):
     for i in range(train_data.shape[0]):
-        decoded_world = decode_world2d_sigmoid(train_data[i])
+        decoded_world = decode_world_sigmoid(train_data[i])
         save_world_preview(block_images, decoded_world, '%s\\image%s.png' % (base_dir, i))
 
 
