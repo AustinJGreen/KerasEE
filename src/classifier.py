@@ -92,9 +92,6 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print("Saving source...")
     utils.save_source_to_dir(version_dir)
 
-    print("Loading block images...")
-    block_images = utils.load_block_images(res_dir)
-
     print("Loading encoding dictionaries...")
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
@@ -144,7 +141,9 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     tb_callback = keras.callbacks.TensorBoard(log_dir=graph_version_dir, batch_size=batch_size, write_graph=False,
                                               write_grads=True)
 
-    c.fit(x_train, y_train, batch_size, epochs, validation_split=0.2, callbacks=[tb_callback])
+    callback_list = [check_best_acc, checkpoint_callback, check_latest_callback, tb_callback]
+
+    c.fit(x_train, y_train, batch_size, epochs, validation_split=0.2, callbacks=callback_list)
 
 
 def main():
