@@ -1,5 +1,6 @@
 import os
 
+import keras
 from keras.layers import Dense
 from keras.layers.convolutional import Conv2D
 from keras.layers.core import Activation, Flatten
@@ -25,7 +26,7 @@ def build_classifier():
 
     model.add(MaxPooling2D(pool_size=(2, 2)))  # 64 x 64
 
-    model.add(Conv2D(filters=128, kernel_size=5, strides=1, padding='same'))
+    model.add(Conv2D(filters=128, kernel_size=5, strides=1, padding='same', input_shape=(64, 64, 10)))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
@@ -63,8 +64,10 @@ def build_classifier():
 
     model.add(Dense(512, activation='relu'))
     model.add(Dense(512, activation='relu'))
+
     model.add(Dense(3, activation='softmax'))
 
+    model.summary()
     return model
 
 
@@ -107,15 +110,45 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print("Loading worlds...")
     x_train, y_labels = load_worlds_with_labels(world_count, '%s\\worlds\\' % res_dir, label_dict, (128, 128),
                                                 block_forward,
-                                                utils.encode_world_sigmoid)
+                                                utils.encode_world_sigmoid, overlap_x=0.5, overlap_y=0.5)
 
     y_train = utils.convert_labels(y_labels, categories=3, epsilon=0)
 
-    c.fit(x_train, y_train, batch_size, epochs)
+    # Create callback for automatically saving best model based on highest regular accuracy
+    check_best_acc = keras.callbacks.ModelCheckpoint('%s\\best_acc.h5' % model_save_dir, monitor='acc', verbose=0,
+                                                     save_best_only=True, save_weights_only=False, mode='max',
+                                                     period=1)
+
+    # Create callback for automatically saving best model based on highest validation accuracy
+    check_best_val_acc = keras.callbacks.ModelCheckpoint('%s\\best_val_acc.h5' % model_save_dir, monitor='val_acc',
+                                                         verbose=0,
+                                                         save_best_only=True, save_weights_only=False, mode='max',
+                                                         period=1)
+
+    # Create callback for automatically saving best model base on lowest validation loss
+    check_best_val_loss = keras.callbacks.ModelCheckpoint('%s\\best_val_loss.h5' % model_save_dir, monitor='val_loss',
+                                                          verbose=0,
+                                                          save_best_only=True, save_weights_only=False, mode='min',
+                                                          period=1)
+
+    # Create periodic checkmark model every 50 epochs in case we need to revert back from latest
+    checkpoint_callback = keras.callbacks.ModelCheckpoint('%s\\epoch{epoch:03d}.h5' % model_save_dir, verbose=0,
+                                                          save_best_only=False, mode='auto', period=5)
+
+    # Create callback for automatically saving lastest model so training can be resumed. Saves every epoch
+    check_latest_callback = keras.callbacks.ModelCheckpoint('%s\\latest.h5' % model_save_dir, verbose=0,
+                                                            save_best_only=False,
+                                                            save_weights_only=False, mode='auto', period=1)
+
+    # Create callback for tensorboard
+    tb_callback = keras.callbacks.TensorBoard(log_dir=graph_version_dir, batch_size=batch_size, write_graph=False,
+                                              write_grads=True)
+
+    c.fit(x_train, y_train, batch_size, epochs, validation_split=0.2, callbacks=[tb_callback])
 
 
 def main():
-    train(epochs=100, batch_size=32, world_count=10000)
+    train(epochs=100, batch_size=16, world_count=10000)
 
 
 if __name__ == "__main__":
