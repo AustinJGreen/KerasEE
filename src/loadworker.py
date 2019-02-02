@@ -87,6 +87,47 @@ def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, b
     return world_array, world_labels
 
 
+def load_worlds_with_files(load_count, world_directory, gen_size, block_forward, encode_func, overlap_x=1, overlap_y=1):
+    world_names = os.listdir(world_directory)
+    random.shuffle(world_names)
+
+    thread_count = cpu_count() - 1
+
+    with Manager() as manager:
+        file_queue = manager.Queue()
+
+        for name in world_names:
+            file_queue.put(world_directory + name)
+
+        world_array = np.zeros((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
+        world_files = []
+
+        world_counter = Value('i', 0)
+        thread_lock = Lock()
+
+        threads = []
+        for thread in range(thread_count):
+            load_thread = WorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_size,
+                                      block_forward, encode_func, None, overlap_x, overlap_y)
+            load_thread.start()
+            threads.append(load_thread)
+
+        world_index = 0
+        for thread in range(len(threads)):
+            threads[thread].join()
+            print("Thread [%s] joined." % thread)
+            thread_load_queue = threads[thread].get_worlds()
+            label_load_queue = threads[thread].get_labels()
+            print("Adding Thread [%s] queue." % thread)
+            while thread_load_queue.qsize() > 0:
+                world_array[world_index] = thread_load_queue.get()
+                world_files.append(label_load_queue.get())
+                world_index += 1
+
+        world_array = world_array[:world_index, :, :, :]
+    return world_array, world_files
+
+
 class WorldLoader(Process):
     time_pt_index = 0
     time_pt_cnt = 0
@@ -212,6 +253,8 @@ class WorldLoader(Process):
 
                         if self.label_dict is not None:
                             self.label_queue.put(label)
+                        else:
+                            self.label_queue.put(world_file)
 
                         self.world_counter.value += 1
                         local_index += 1

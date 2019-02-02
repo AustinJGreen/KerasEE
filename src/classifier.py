@@ -6,11 +6,11 @@ from keras.layers.convolutional import Conv2D
 from keras.layers.core import Activation, Flatten
 from keras.layers.normalization import BatchNormalization
 from keras.layers.pooling import MaxPooling2D
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.optimizers import Adam
 
 import utils
-from loadworker import load_worlds_with_labels
+from loadworker import load_worlds_with_files, load_worlds_with_labels
 
 
 def build_classifier():
@@ -122,16 +122,6 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                                                          save_best_only=True, save_weights_only=False, mode='max',
                                                          period=1)
 
-    # Create callback for automatically saving best model base on lowest validation loss
-    check_best_val_loss = keras.callbacks.ModelCheckpoint('%s\\best_val_loss.h5' % model_save_dir, monitor='val_loss',
-                                                          verbose=0,
-                                                          save_best_only=True, save_weights_only=False, mode='min',
-                                                          period=1)
-
-    # Create periodic checkmark model every 50 epochs in case we need to revert back from latest
-    checkpoint_callback = keras.callbacks.ModelCheckpoint('%s\\epoch{epoch:03d}.h5' % model_save_dir, verbose=0,
-                                                          save_best_only=False, mode='auto', period=5)
-
     # Create callback for automatically saving lastest model so training can be resumed. Saves every epoch
     check_latest_callback = keras.callbacks.ModelCheckpoint('%s\\latest.h5' % model_save_dir, verbose=0,
                                                             save_best_only=False,
@@ -141,13 +131,81 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     tb_callback = keras.callbacks.TensorBoard(log_dir=graph_version_dir, batch_size=batch_size, write_graph=False,
                                               write_grads=True)
 
-    callback_list = [check_best_acc, checkpoint_callback, check_latest_callback, tb_callback]
+    callback_list = [check_best_acc, check_latest_callback, tb_callback, check_best_val_acc]
 
-    c.fit(x_train, y_train, batch_size, epochs, validation_split=0.2, callbacks=callback_list)
+    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list)
+
+
+def classify_worlds(network_ver):
+    cur_dir = os.getcwd()
+    res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
+    all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
+    model_dir = utils.check_or_create_local_path("classifier", all_models_dir)
+    version_dir = utils.check_or_create_local_path(network_ver, model_dir)
+    model_save_dir = utils.check_or_create_local_path("models", version_dir)
+    classifications_dir = utils.check_or_create_local_path('classifications', model_dir)
+    noob_dir = utils.check_or_create_local_path('noob', classifications_dir)
+    okay_dir = utils.check_or_create_local_path('okay', classifications_dir)
+    pro_dir = utils.check_or_create_local_path('pro', classifications_dir)
+
+    print("Loading model...")
+    classifier = load_model('%s\\latest.h5' % model_save_dir)
+
+    print("Loading block images...")
+    block_images = utils.load_block_images(res_dir)
+
+    print("Loading encoding dictionaries...")
+    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
+
+    x_data, x_files = load_worlds_with_files(10000, '%s\\worlds\\' % res_dir, (128, 128), block_forward,
+                                             utils.encode_world_sigmoid)
+
+    batch_size = 50
+    batches = x_data.shape[0] // batch_size
+
+    for batch_index in range(batches):
+        x_batch = x_data[batch_index * batch_size:(batch_index + 1) * batch_size]
+        y_batch = classifier.predict(x_batch)
+
+        for world in range(batch_size):
+            g_index = (batch_index * batch_size) + world
+            world_file = x_files[g_index]
+            world_id = utils.get_world_id(world_file)
+            prediction = y_batch[world]
+
+            category = 0
+            max_conf = -1
+            for p in range(prediction.shape[0]):
+                if prediction[p] > max_conf:
+                    max_conf = prediction[p]
+                    category = p
+
+            if category == 0:
+                decoded = utils.decode_world_sigmoid(block_backward, x_batch[world])
+                utils.save_world_preview(block_images, decoded, '%s\\%s.png' % (noob_dir, world_id))
+            elif category == 1:
+                decoded = utils.decode_world_sigmoid(block_backward, x_batch[world])
+                utils.save_world_preview(block_images, decoded, '%s\\%s.png' % (okay_dir, world_id))
+            elif category == 2:
+                decoded = utils.decode_world_sigmoid(block_backward, x_batch[world])
+                utils.save_world_preview(block_images, decoded, '%s\\%s.png' % (pro_dir, world_id))
+
+
+def add_classifications():
+    cur_dir = os.getcwd()
+    res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
+    all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
+    model_dir = utils.check_or_create_local_path("classifier", all_models_dir)
+    classifications_dir = utils.check_or_create_local_path('classifications', model_dir)
+    noob_dir = utils.check_or_create_local_path('noob', classifications_dir)
+    okay_dir = utils.check_or_create_local_path('okay', classifications_dir)
+    pro_dir = utils.check_or_create_local_path('pro', classifications_dir)
+
 
 
 def main():
-    train(epochs=100, batch_size=16, world_count=10000)
+    # train(epochs=50, batch_size=80, world_count=10000)
+    classify_worlds('ver13')
 
 
 if __name__ == "__main__":
