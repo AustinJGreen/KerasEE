@@ -67,6 +67,13 @@ def load_label_dict(base_dir, name):
     return label_dict
 
 
+def save_label_dict(base_dir, name, label_dict):
+    with open('%s\\%s.txt' % (base_dir, name), 'w') as fp:
+        for world_id in label_dict.keys():
+            label = label_dict[world_id]
+            fp.write('%s %s\n' % (world_id, label))
+
+
 def convert_labels(raw_labels, categories=10, epsilon=1e-10):
     # Use label smoothing
     # http://www.deeplearningbook.org/contents/regularization.html

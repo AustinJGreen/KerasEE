@@ -201,11 +201,32 @@ def add_classifications():
     okay_dir = utils.check_or_create_local_path('okay', classifications_dir)
     pro_dir = utils.check_or_create_local_path('pro', classifications_dir)
 
+    noob_worlds = os.listdir(noob_dir)
+    okay_worlds = os.listdir(okay_dir)
+    pro_worlds = os.listdir(pro_dir)
+
+    label_dict = utils.load_label_dict(res_dir, 'world_labels_basic')
+
+    for noob_world in noob_worlds:
+        noob_id = utils.get_world_id(noob_world)
+        label_dict[noob_id] = 0
+
+    for okay_world in okay_worlds:
+        okay_id = utils.get_world_id(okay_world)
+        label_dict[okay_id] = 1
+
+    for pro_world in pro_worlds:
+        pro_id = utils.get_world_id(pro_world)
+        label_dict[pro_id] = 2
+
+    utils.save_label_dict(classifications_dir, 'test', label_dict)
+    return
 
 
 def main():
-    # train(epochs=50, batch_size=80, world_count=10000)
-    classify_worlds('ver13')
+    train(epochs=50, batch_size=80, world_count=20000)
+    # classify_worlds('ver13')
+    # add_classifications()
 
 
 if __name__ == "__main__":
