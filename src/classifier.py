@@ -102,7 +102,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     c.compile(loss="binary_crossentropy", optimizer=c_optim, metrics=["accuracy"])
 
     print("Loading labels...")
-    label_dict = utils.load_label_dict(res_dir, 'world_labels_basic')
+    label_dict = utils.load_label_dict(res_dir, 'world_labels_c')
 
     print("Loading worlds...")
     x_train, y_labels = load_worlds_with_labels(world_count, '%s\\worlds\\' % res_dir, label_dict, (128, 128),
@@ -157,8 +157,10 @@ def classify_worlds(network_ver):
     print("Loading encoding dictionaries...")
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
-    x_data, x_files = load_worlds_with_files(10000, '%s\\worlds\\' % res_dir, (128, 128), block_forward,
+    x_data, x_files = load_worlds_with_files(1000, '%s\\worlds\\' % res_dir, (128, 128), block_forward,
                                              utils.encode_world_sigmoid)
+
+    x_labeled = utils.load_label_dict(res_dir, 'world_labels_c')
 
     batch_size = 50
     batches = x_data.shape[0] // batch_size
@@ -171,6 +173,11 @@ def classify_worlds(network_ver):
             g_index = (batch_index * batch_size) + world
             world_file = x_files[g_index]
             world_id = utils.get_world_id(world_file)
+
+            # Ignore worlds we've already labeled
+            if world_id in x_labeled:
+                continue
+
             prediction = y_batch[world]
 
             category = 0
@@ -191,7 +198,7 @@ def classify_worlds(network_ver):
                 utils.save_world_preview(block_images, decoded, '%s\\%s.png' % (pro_dir, world_id))
 
 
-def add_classifications():
+def add_classifications(dict_src_name):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
@@ -205,28 +212,33 @@ def add_classifications():
     okay_worlds = os.listdir(okay_dir)
     pro_worlds = os.listdir(pro_dir)
 
-    label_dict = utils.load_label_dict(res_dir, 'world_labels_basic')
+    orig_dict = utils.load_label_dict(res_dir, dict_src_name)
+    new_dict = utils.load_label_dict(res_dir, dict_src_name)
 
     for noob_world in noob_worlds:
         noob_id = utils.get_world_id(noob_world)
-        label_dict[noob_id] = 0
+        if noob_id not in orig_dict:
+            new_dict[noob_id] = 0
 
     for okay_world in okay_worlds:
         okay_id = utils.get_world_id(okay_world)
-        label_dict[okay_id] = 1
+        if okay_id in new_dict and new_dict[okay_id] < 1:
+            continue
+        elif okay_id not in orig_dict:
+            new_dict[okay_id] = 1
 
     for pro_world in pro_worlds:
         pro_id = utils.get_world_id(pro_world)
-        label_dict[pro_id] = 2
+        new_dict[pro_id] = 2
 
-    utils.save_label_dict(classifications_dir, 'test', label_dict)
+    utils.save_label_dict(classifications_dir, 'test', new_dict)
     return
 
 
 def main():
-    train(epochs=50, batch_size=80, world_count=20000)
-    # classify_worlds('ver13')
-    # add_classifications()
+    train(epochs=30, batch_size=64, world_count=20000)
+    # classify_worlds('ver15')
+    # add_classifications(dict_src_name='world_labels_c')
 
 
 if __name__ == "__main__":

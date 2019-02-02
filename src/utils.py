@@ -621,9 +621,10 @@ def delete_empty_versions(base_dir, min_files):
 
             if not os.path.exists(graph_ver_dir) or len(
                     os.listdir(graph_ver_dir)) < min_files:  # 1 is just model in graph
+
                 # Delete both directories
-                delete_files_in_path(version_dir)
-                os.rmdir(version_dir)
+                if delete_files_in_path(version_dir):
+                    os.rmdir(version_dir)
 
                 if os.path.exists(graph_ver_dir):
                     if delete_files_in_path(graph_ver_dir):

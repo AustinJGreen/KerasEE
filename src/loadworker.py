@@ -221,11 +221,8 @@ class WorldLoader(Process):
         x_min_increment = self.overlap_x * self.gen_size[0]
         y_min_increment = self.overlap_y * self.gen_size[1]
 
-        if x_margin > 0:
-            x_offset = np.random.randint(0, x_margin)
-
-        if y_margin > 0:
-            y_offset = np.random.randint(0, y_margin)
+        x_offset = np.random.randint(0, x_margin + 1)
+        y_offset = np.random.randint(0, y_margin + 1)
 
         x_start = x_offset
         while x_start + self.gen_size[0] < world_width:
