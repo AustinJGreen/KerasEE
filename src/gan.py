@@ -2,10 +2,10 @@ import os
 import time
 
 import keras
+import keras.backend as K
 import numpy as np
 import tensorflow as tf
-from keras.layers import Dense
-from keras.layers import Reshape
+from keras.layers import Dense, Reshape
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.core import Activation, Flatten
@@ -101,7 +101,7 @@ def build_discriminator():
 
     model.add(Flatten())
 
-    model.add(Dense(512, activation='relu'))
+    model.add(Dense(256, activation='relu'))
     model.add(Dense(1, activation="sigmoid"))
 
     model.trainable = True
@@ -115,6 +115,66 @@ def generator_containing_discriminator(g, d):
     d.trainable = False
     model.add(d)
     return model
+
+
+def improved_loss(generator, discriminator):
+    g_feature_layers = [7, 13, 19, 25]
+    g_feature_model = generator
+    g_feature_model.outputs = [generator.layers[i].output for i in g_feature_layers]
+
+    d_feature_layers = [7, 14, 21]
+    d_feature_model = discriminator
+    d_feature_model.outputs = [discriminator.layers[i].output for i in d_feature_layers]
+
+    def l1(y_true, y_pred):
+        """Calculate the L1 loss used in all loss calculations"""
+        if K.ndim(y_true) == 4:
+            return K.sum(K.abs(y_pred - y_true), axis=[1, 2, 3])
+        elif K.ndim(y_true) == 3:
+            return K.sum(K.abs(y_pred - y_true), axis=[1, 2])
+        else:
+            raise NotImplementedError("Calculating L1 loss on 1D tensors? should not occur for this network")
+
+    def gram_matrix(x):
+        """Calculate gram matrix used in style loss"""
+
+        # Assertions on input
+        assert K.ndim(x) == 4, 'Input tensor should be a 4d (B, H, W, C) tensor'
+        assert K.image_data_format() == 'channels_last', "Please use channels-last format"
+
+        # Permute channels and get resulting shape
+        x = K.permute_dimensions(x, (0, 3, 1, 2))
+        shape = K.shape(x)
+        b, c, h, w = shape[0], shape[1], shape[2], shape[3]
+
+        # Reshape x and do batch dot product
+        features = K.reshape(x, K.stack([b, c, h * w]))
+        gram = K.batch_dot(features, features, axes=2)
+
+        # Normalize with channels, height and width
+        gram = gram / K.cast(c * h * w, x.dtype)
+
+        return gram
+
+    def loss_style(arg1, arg2):
+        """Style loss based on output/computation, used for both eq. 4 & 5 in paper"""
+        style_loss = 0
+        for o, g in zip(arg1, arg2):
+            style_loss += l1(gram_matrix(o), gram_matrix(g))
+        return style_loss
+
+    def loss(y_true, y_pred):
+
+        binary_crossentropy = K.mean(K.binary_crossentropy(y_true, y_pred), axis=-1)
+
+        d_true_features = d_feature_model(y_true)
+        g_pred_features = g_feature_model(y_pred)
+
+        feature_loss = loss_style(d_true_features, g_pred_features)
+
+        return feature_loss + binary_crossentropy
+
+    return loss
 
 
 def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
@@ -146,9 +206,6 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print("Loading encoding dictionaries...")
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
-    print("Loading minimap values...")
-    minimap_values = utils.load_minimap_values(res_dir)
-
     # Load model and existing weights
     print("Loading model...")
 
@@ -178,7 +235,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
         g_optim = Adam(lr=0.0001, beta_1=0.5)
         d_on_g = generator_containing_discriminator(g, d)
-        d_on_g.compile(loss="binary_crossentropy", optimizer=g_optim)
+        d_on_g.compile(loss=improved_loss(g, d), optimizer=g_optim)
     else:
         print("Building model from scratch...")
         d_optim = Adam(lr=0.00001)
@@ -309,7 +366,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             tb_writer.add_summary(g_loss_summary, (epoch * number_of_batches) + minibatch_index)
             tb_writer.flush()
 
-            print("epoch [%d/%d] :: batch [%d/%d] :: disAcc = %.1f%% :: disLoss = %f :: genLoss = %f" % (
+            print("epoch [%d/%d] :: batch [%d/%d] :: dis_acc = %.1f%% :: dis_loss = %f :: gen_loss = %f" % (
                 epoch, epochs, minibatch_index, number_of_batches, d_avg_acc * 100, d_avg_loss, g_loss))
 
             # Save models
@@ -338,7 +395,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=50, world_count=200000, initial_epoch=0)
+    train(epochs=100, batch_size=50, world_count=1000, initial_epoch=0)
 
 
 if __name__ == "__main__":
