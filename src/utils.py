@@ -479,7 +479,7 @@ def load_world_data_ver3(world_file):
 
     layer_size = world_width * world_height
 
-    world = np.zeros((world_width, world_height), dtype=float)
+    world = np.zeros((world_width, world_height), dtype=int)
 
     for j in range(layer_size):
         x = int(j % world_width)

@@ -173,8 +173,8 @@ class WorldLoader(Process):
                     distinct_ids.append(block)
 
         total_size = width * height
-        required = int(0.4 * total_size)
-        return edited_blocks >= required and len(distinct_ids) >= 5
+        required = int(0.5 * total_size)
+        return edited_blocks >= required and len(distinct_ids) >= 6
 
     @staticmethod
     def is_good_label_world(cross_section):
@@ -209,14 +209,28 @@ class WorldLoader(Process):
                 # No label for world, return
                 return
 
-        if world_width < self.gen_size[0] or world_height < self.gen_size[1]:
-            return
+        # Check if need to resize width
+        if world_width < self.gen_size[0]:
+            # Random placement along x axis
+            displace_x = np.random.randint(0, self.gen_size[0] - world_width + 1)
+
+            world_resized = np.zeros((self.gen_size[0], world_height), dtype=int)
+            world_resized[displace_x:displace_x + world_width, :] = world
+            world = world_resized
+            world_width = self.gen_size[0]
+
+        # Check if need to resize height
+        if world_height < self.gen_size[1]:
+            # Random placement along y axis
+            displace_y = np.random.randint(0, self.gen_size[1] - world_height + 1)
+
+            world_resized = np.zeros((world_width, self.gen_size[1]), dtype=int)
+            world_resized[:, displace_y:displace_y + world_height] = world
+            world = world_resized
+            world_height = self.gen_size[1]
 
         x_margin = world_width % self.gen_size[0]
         y_margin = world_height % self.gen_size[1]
-
-        x_offset = 0
-        y_offset = 0
 
         x_min_increment = self.overlap_x * self.gen_size[0]
         y_min_increment = self.overlap_y * self.gen_size[1]
@@ -225,10 +239,10 @@ class WorldLoader(Process):
         y_offset = np.random.randint(0, y_margin + 1)
 
         x_start = x_offset
-        while x_start + self.gen_size[0] < world_width:
+        while x_start + self.gen_size[0] <= world_width:
 
             y_start = y_offset
-            while y_start + self.gen_size[1] < world_height:
+            while y_start + self.gen_size[1] <= world_height:
                 x_end = x_start + self.gen_size[0]
                 y_end = y_start + self.gen_size[1]
                 cross_section = world[x_start:x_end, y_start:y_end]
@@ -283,7 +297,7 @@ class WorldLoader(Process):
         self.daemon = True
 
     def run(self):
-        time_points = np.array([0.] * 250)
+        time_points = np.array([0.] * 500)
         while not self.file_queue.empty() and self.world_counter.value < self.target_count:
             world_file = self.file_queue.get()
             time0 = time.time()

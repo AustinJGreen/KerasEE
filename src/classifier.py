@@ -1,7 +1,7 @@
 import os
 
 import keras
-from keras.layers import Dense
+from keras.layers import Dense, SpatialDropout2D
 from keras.layers.convolutional import Conv2D
 from keras.layers.core import Activation, Flatten
 from keras.layers.normalization import BatchNormalization
@@ -11,6 +11,7 @@ from keras.optimizers import Adam
 
 import utils
 from loadworker import load_worlds_with_files, load_worlds_with_labels
+from resnet import ResNet50
 
 
 def build_classifier():
@@ -20,50 +21,50 @@ def build_classifier():
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(filters=64, kernel_size=5, strides=1, padding='same'))
+    model.add(Conv2D(filters=64, kernel_size=3, strides=1, padding='same'))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
     model.add(MaxPooling2D(pool_size=(2, 2)))  # 64 x 64
+    model.add(SpatialDropout2D(0.3))
 
     model.add(Conv2D(filters=128, kernel_size=5, strides=1, padding='same', input_shape=(64, 64, 10)))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(filters=128, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2D(filters=128, kernel_size=5, strides=1, padding='same'))
+    model.add(Conv2D(filters=128, kernel_size=3, strides=1, padding='same'))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
     model.add(MaxPooling2D(pool_size=(2, 2)))  # 32 x 32
+    model.add(SpatialDropout2D(0.3))
 
     model.add(Conv2D(filters=256, kernel_size=5, strides=1, padding='same'))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(filters=256, kernel_size=5, strides=1, padding='same'))
+    model.add(Conv2D(filters=256, kernel_size=3, strides=1, padding='same'))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
     model.add(MaxPooling2D(pool_size=(2, 2)))  # 16 x 16
+    model.add(SpatialDropout2D(0.3))
 
     model.add(Conv2D(filters=512, kernel_size=5, strides=1, padding='same'))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
-    model.add(Conv2D(filters=512, kernel_size=5, strides=1, padding='same'))
+    model.add(Conv2D(filters=512, kernel_size=3, strides=1, padding='same'))
     model.add(BatchNormalization(momentum=0.8))
     model.add(Activation('relu'))
 
     model.add(MaxPooling2D(pool_size=(2, 2)))  # 8 x 8
+    model.add(SpatialDropout2D(0.3))
 
     model.add(Flatten())
 
-    model.add(Dense(512, activation='relu'))
-    model.add(Dense(512, activation='relu'))
+    model.add(Dense(256, activation='relu'))
+    model.add(Dense(128, activation='relu'))
 
     model.add(Dense(3, activation='softmax'))
 
@@ -71,7 +72,7 @@ def build_classifier():
     return model
 
 
-def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
+def train(epochs, batch_size, world_count, dict_src_name, version_name=None, initial_epoch=0):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
@@ -98,16 +99,16 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print("Building model from scratch...")
     c_optim = Adam(lr=0.0001)
 
-    c = build_classifier()
+    c = ResNet50()
     c.compile(loss="binary_crossentropy", optimizer=c_optim, metrics=["accuracy"])
 
     print("Loading labels...")
-    label_dict = utils.load_label_dict(res_dir, 'world_labels_c')
+    label_dict = utils.load_label_dict(res_dir, dict_src_name)
 
     print("Loading worlds...")
-    x_train, y_labels = load_worlds_with_labels(world_count, '%s\\worlds\\' % res_dir, label_dict, (128, 128),
+    x_train, y_labels = load_worlds_with_labels(world_count, '%s\\worlds\\' % res_dir, label_dict, (112, 112),
                                                 block_forward,
-                                                utils.encode_world_sigmoid, overlap_x=0.5, overlap_y=0.5)
+                                                utils.encode_world_sigmoid, overlap_x=1, overlap_y=1)
 
     y_train = utils.convert_labels(y_labels, categories=3, epsilon=0)
 
@@ -133,10 +134,55 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
     callback_list = [check_best_acc, check_latest_callback, tb_callback, check_best_val_acc]
 
-    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list)
+    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list, validation_split=0.2)
 
 
-def classify_worlds(network_ver):
+def build_pro_repo(network_ver, dict_src_name):
+    cur_dir = os.getcwd()
+    res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
+    all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
+    model_dir = utils.check_or_create_local_path("classifier", all_models_dir)
+    version_dir = utils.check_or_create_local_path(network_ver, model_dir)
+    model_save_dir = utils.check_or_create_local_path("models", version_dir)
+    proworlds_dir = utils.check_or_create_local_path('proworlds', model_dir)
+
+    print("Loading model...")
+    classifier = load_model('%s\\latest.h5' % model_save_dir)
+
+    print("Loading block images...")
+    block_images = utils.load_block_images(res_dir)
+
+    print("Loading encoding dictionaries...")
+    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
+
+    x_data, x_files = load_worlds_with_files(60000, '%s\\worlds\\' % res_dir, (128, 128), block_forward,
+                                             utils.encode_world_sigmoid)
+
+    x_labeled = utils.load_label_dict(res_dir, dict_src_name)
+
+    # Save preexisting worlds
+    # for x_label in x_labeled.keys():
+    #    if x_labeled[x_label] == 2:
+
+    batch_size = 50
+    batches = x_data.shape[0] // batch_size
+
+    for batch_index in range(batches):
+        x_batch = x_data[batch_index * batch_size:(batch_index + 1) * batch_size]
+        y_batch = classifier.predict(x_batch)
+
+        for world in range(batch_size):
+            g_index = (batch_index * batch_size) + world
+            world_file = x_files[g_index]
+            world_id = utils.get_world_id(world_file)
+
+            prediction = y_batch[world]
+            if prediction[2] >= 0.8:
+                decoded = utils.decode_world_sigmoid(block_backward, x_batch[world])
+                utils.save_world_preview(block_images, decoded, '%s\\%s.png' % (proworlds_dir, world_id))
+
+
+def classify_worlds(network_ver, dict_src_name):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
@@ -157,10 +203,10 @@ def classify_worlds(network_ver):
     print("Loading encoding dictionaries...")
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
-    x_data, x_files = load_worlds_with_files(1000, '%s\\worlds\\' % res_dir, (128, 128), block_forward,
+    x_data, x_files = load_worlds_with_files(2500, '%s\\worlds\\' % res_dir, (112, 112), block_forward,
                                              utils.encode_world_sigmoid)
 
-    x_labeled = utils.load_label_dict(res_dir, 'world_labels_c')
+    x_labeled = utils.load_label_dict(res_dir, dict_src_name)
 
     batch_size = 50
     batches = x_data.shape[0] // batch_size
@@ -236,9 +282,10 @@ def add_classifications(dict_src_name):
 
 
 def main():
-    train(epochs=30, batch_size=64, world_count=20000)
-    # classify_worlds('ver15')
-    # add_classifications(dict_src_name='world_labels_c')
+    train(epochs=50, batch_size=100, world_count=17000, dict_src_name='world_labels_d')
+    # build_pro_repo('ver18', dict_src_name='world_labels_d')
+    # classify_worlds('ver17', dict_src_name='world_labels_d')
+    # add_classifications(dict_src_name='world_labels_d')
 
 
 if __name__ == "__main__":
