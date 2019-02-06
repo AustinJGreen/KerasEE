@@ -7,3 +7,5 @@ other model is purely given 32x32 input like auto-encoder and tasked to improve 
 
 Judge is trained upon whether or not original comes from generated, 100% or 0% sure
 Helper is trained upon
+
+Create model that takes in 64x64 input and outputs likelihood of 1 block in the center of the input

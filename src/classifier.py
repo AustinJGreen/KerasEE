@@ -19,8 +19,12 @@ def build_classifier(size):
     f = 64
     s = size
 
-    while size > 7:
-        model.add(Conv2D(filters=f, kernel_size=5, strides=1, padding='same', input_shape=(112, 112, 10)))
+    while s > 7:
+        if s == size:
+            model.add(Conv2D(filters=f, kernel_size=5, strides=1, padding='same', input_shape=(size, size, 10)))
+        else:
+            model.add(Conv2D(filters=f, kernel_size=5, strides=1, padding='same'))
+
         model.add(BatchNormalization(momentum=0.8))
         model.add(Activation('relu'))
 
@@ -28,7 +32,7 @@ def build_classifier(size):
         model.add(BatchNormalization(momentum=0.8))
         model.add(Activation('relu'))
 
-        model.add(MaxPooling2D(pool_size=(2, 2)))  # 56 x 56
+        model.add(MaxPooling2D(pool_size=(2, 2)))
         model.add(SpatialDropout2D(0.3))
 
         f = f * 2
@@ -107,7 +111,7 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
 
     callback_list = [check_best_acc, check_latest_callback, tb_callback, check_best_val_acc]
 
-    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list, validation_split=0.2)
+    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list, validation_split=0)
 
 
 def build_pro_repo(network_ver, dict_src_name):
@@ -176,7 +180,7 @@ def classify_worlds(network_ver, dict_src_name):
     print("Loading encoding dictionaries...")
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
-    x_data, x_files = load_worlds_with_files(2500, '%s\\worlds\\' % res_dir, (112, 112), block_forward,
+    x_data, x_files = load_worlds_with_files(5000, '%s\\worlds\\' % res_dir, (112, 112), block_forward,
                                              utils.encode_world_sigmoid)
 
     x_labeled = utils.load_label_dict(res_dir, dict_src_name)
@@ -255,9 +259,9 @@ def add_classifications(dict_src_name):
 
 
 def main():
-    train(epochs=50, batch_size=100, world_count=17000, dict_src_name='world_labels_d')
+    train(epochs=30, batch_size=100, world_count=20000, dict_src_name='world_labels_d')
     # build_pro_repo('ver18', dict_src_name='world_labels_d')
-    # classify_worlds('ver17', dict_src_name='world_labels_d')
+    # classify_worlds('ver32', dict_src_name='world_labels_d')
     # add_classifications(dict_src_name='world_labels_d')
 
 
