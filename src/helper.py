@@ -17,57 +17,37 @@ import utils
 from loadworker import load_worlds
 
 
-def build_encoder_layers(encoder_input):
-    encoding = Conv2D(32, kernel_size=5, strides=1, padding='same')(encoder_input)
-    encoding = BatchNormalization(momentum=0.8)(encoding)
-    encoding = Activation('relu')(encoding)
+def build_encoder_layers(encoder_input, input_size):
+    f = 32
+    s = input_size
 
-    encoding = Conv2D(32, kernel_size=5, strides=1, padding='same')(encoding)
-    encoding = BatchNormalization(momentum=0.8)(encoding)
-    encoding = Activation('relu')(encoding)
+    encoding = encoder_input
 
-    encoding = MaxPooling2D(pool_size=(2, 2))(encoding)  # 32x32x32
+    while s > 4:
+        encoding = Conv2D(f, kernel_size=5, strides=1, padding='same')(encoding)
+        encoding = BatchNormalization(momentum=0.8)(encoding)
+        encoding = Activation('relu')(encoding)
 
-    encoding = Conv2D(64, kernel_size=5, strides=1, padding='same')(encoding)
-    encoding = BatchNormalization(momentum=0.8)(encoding)
-    encoding = Activation('relu')(encoding)
+        encoding = Conv2D(f, kernel_size=5, strides=1, padding='same')(encoding)
+        encoding = BatchNormalization(momentum=0.8)(encoding)
+        encoding = Activation('relu')(encoding)
 
-    encoding = Conv2D(64, kernel_size=5, strides=1, padding='same')(encoding)
-    encoding = BatchNormalization(momentum=0.8)(encoding)
-    encoding = Activation('relu')(encoding)
+        encoding = MaxPooling2D(pool_size=(2, 2))(encoding)  # 32x32x32
 
-    encoding = MaxPooling2D(pool_size=(2, 2))(encoding)  # 16x16x64
-
-    encoding = Conv2D(128, kernel_size=3, strides=1, padding='same')(encoding)
-    encoding = BatchNormalization(momentum=0.8)(encoding)
-    encoding = Activation('relu')(encoding)
-
-    encoding = Conv2D(128, kernel_size=3, strides=1, padding='same')(encoding)
-    encoding = BatchNormalization(momentum=0.8)(encoding)
-    encoding = Activation('relu')(encoding)
-
-    encoding = MaxPooling2D(pool_size=(2, 2))(encoding)  # 8x8x128
-
-    encoding = Conv2D(256, kernel_size=3, strides=1, padding='same')(encoding)
-    encoding = BatchNormalization(momentum=0.8)(encoding)
-    encoding = Activation('relu')(encoding)
-
-    encoding = Conv2D(256, kernel_size=3, strides=1, padding='same')(encoding)
-    encoding = BatchNormalization(momentum=0.8)(encoding)
-    encoding = Activation('relu')(encoding)
-
-    encoding = MaxPooling2D(pool_size=(2, 2))(encoding)  # 4x4x256
+        s = s // 2
+        f = f * 2
 
     encoding = Flatten()(encoding)
+    encoding = Dense(units=128, activation='relu')(encoding)
     return encoding
 
 
-def build_helper_model():
-    view_input = Input(shape=(64, 64, 10))
+def build_helper_model(size):
+    view_input = Input(shape=(size, size, 10))
     view_copy = Lambda(lambda x: x)(view_input)
 
     # First input takes in world and encodes world
-    view = build_encoder_layers(view_input)
+    view = build_encoder_layers(view_input, 32)
 
     latent_input = Input(shape=(128,))
     latent = Dense(units=4 * 4 * 256, activation='relu')(latent_input)
@@ -76,37 +56,19 @@ def build_helper_model():
     decoder = Dense(units=4 * 4 * 256, activation='relu')(decoder)  # Dense connections between the two
     decoder = Reshape(target_shape=(4, 4, 256))(decoder)  # Reshape for decoding
 
-    decoder = Conv2DTranspose(256, kernel_size=3, strides=1, padding='same')(decoder)
-    decoder = BatchNormalization(momentum=0.8)(decoder)
-    decoder = Activation('relu')(decoder)
+    f = 256
+    s = 4
+    while s < size:
+        decoder = Conv2DTranspose(f, kernel_size=3, strides=1, padding='same')(decoder)
+        decoder = BatchNormalization(momentum=0.8)(decoder)
+        decoder = Activation('relu')(decoder)
 
-    decoder = Conv2DTranspose(256, kernel_size=5, strides=2, padding='same')(decoder)  # 8x8
-    decoder = BatchNormalization(momentum=0.8)(decoder)
-    decoder = Activation('relu')(decoder)
+        decoder = Conv2DTranspose(f, kernel_size=5, strides=2, padding='same')(decoder)  # 8x8
+        decoder = BatchNormalization(momentum=0.8)(decoder)
+        decoder = Activation('relu')(decoder)
 
-    decoder = Conv2DTranspose(128, kernel_size=3, strides=1, padding='same')(decoder)
-    decoder = BatchNormalization(momentum=0.8)(decoder)
-    decoder = Activation('relu')(decoder)
-
-    decoder = Conv2DTranspose(128, kernel_size=5, strides=2, padding='same')(decoder)  # 16x16
-    decoder = BatchNormalization(momentum=0.8)(decoder)
-    decoder = Activation('relu')(decoder)
-
-    decoder = Conv2DTranspose(64, kernel_size=3, strides=1, padding='same')(decoder)
-    decoder = BatchNormalization(momentum=0.8)(decoder)
-    decoder = Activation('relu')(decoder)
-
-    decoder = Conv2DTranspose(64, kernel_size=5, strides=2, padding='same')(decoder)  # 32x32
-    decoder = BatchNormalization(momentum=0.8)(decoder)
-    decoder = Activation('relu')(decoder)
-
-    decoder = Conv2DTranspose(32, kernel_size=3, strides=1, padding='same')(decoder)
-    decoder = BatchNormalization(momentum=0.8)(decoder)
-    decoder = Activation('relu')(decoder)
-
-    decoder = Conv2DTranspose(32, kernel_size=5, strides=2, padding='same')(decoder)  # 64x64
-    decoder = BatchNormalization(momentum=0.8)(decoder)
-    decoder = Activation('relu')(decoder)
+        f = f // 2
+        s = s * 2
 
     decoder = Conv2DTranspose(10, kernel_size=3, strides=1, padding='same')(decoder)  # 64x64x10
     decoder = BatchNormalization(momentum=0.8)(decoder)
@@ -119,20 +81,20 @@ def build_helper_model():
     return helper_model
 
 
-def build_judge_model():
-    orig_input = Input(shape=(64, 64, 10))
+def build_judge_model(size):
+    orig_input = Input(shape=(size, size, 10))
     orig_encoding = Conv2D(256, kernel_size=5, strides=1, )(orig_input)
-    orig_encoding = build_encoder_layers(orig_encoding)
+    orig_encoding = build_encoder_layers(orig_encoding, size)
     orig_latent = Activation(activation='sigmoid')(orig_encoding)
 
-    generated_input = Input(shape=(64, 64, 10))
+    generated_input = Input(shape=(size, size, 10))
     generated_encoding = Conv2D(256, kernel_size=5, strides=1)(generated_input)
-    generated_encoding = build_encoder_layers(generated_encoding)
+    generated_encoding = build_encoder_layers(generated_encoding, size)
     generated_latent = Activation(activation='sigmoid')(generated_encoding)
 
     both = Lambda(lambda x: K.abs(x[0] - x[1]))([orig_latent, generated_latent])
-    prediction = Dense(64 * 64)(both)
-    prediction = Reshape((1, 64 * 64))(prediction)
+    prediction = Dense(size * size)(both)
+    prediction = Reshape((1, size * size))(prediction)
     prediction = Permute((2, 1))(prediction)
     prediction = Activation('sigmoid')(prediction)
 
@@ -141,10 +103,10 @@ def build_judge_model():
     return judge_model
 
 
-def build_helper_feedback_model(helper, judge):
+def build_helper_feedback_model(helper, judge, size):
     judge.trainable = False
 
-    view_input = Input(shape=(64, 64, 10))
+    view_input = Input(shape=(size, size, 10))
     latent_input = Input(shape=(128,))
 
     helper_feedback = helper([view_input, latent_input])
@@ -186,10 +148,6 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print("Loading encoding dictionaries...")
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
-    # Load minimap values
-    print("Loading minimap values...")
-    minimap_values = utils.load_minimap_values(res_dir)
-
     if no_version:
         # Delete existing worlds and previews if any
         print("Checking for old generated data...")
@@ -199,13 +157,13 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     # Load model and existing weights
     print("Loading models...")
 
-    judge = build_judge_model()
+    judge = build_judge_model(32)
     judge_optimizer = Adam(lr=0.00001)
     judge.compile(loss="binary_crossentropy", optimizer=judge_optimizer, metrics=['accuracy'])
 
     helper_optimizer = Adam(lr=0.0001)
-    helper = build_helper_model()
-    helper_feedback = build_helper_feedback_model(helper, judge)
+    helper = build_helper_model(32)
+    helper_feedback = build_helper_feedback_model(helper, judge, 32)
     helper_feedback.compile(loss="binary_crossentropy", optimizer=helper_optimizer)
 
     # before training init writer (for tensorboard log) / model
@@ -227,7 +185,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
     # Load Data
     print("Loading worlds...")
-    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, (64, 64), block_forward, utils.encode_world_sigmoid)
+    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, (32, 32), block_forward, utils.encode_world_sigmoid)
 
     # Start Training loop
     world_count = x_train.shape[0]
@@ -245,35 +203,35 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         np.random.shuffle(x_train)
 
         for minibatch_index in range(number_of_batches):
+
             # Get real set of worlds
             world_batch = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
             world_batch_masked, world_masks = utils.mask_batch_low(world_batch)
-            world_masks_reshaped = np.reshape(world_masks[:, :, :, 0], (batch_size, 64 * 64, 1))
+            world_masks_reshaped = np.reshape(world_masks[:, :, :, 0], (batch_size, 32 * 32, 1))
 
             # Get fake set of worlds
             noise = np.random.normal(0, 1, size=(batch_size, 128))
             generated = helper.predict([world_batch_masked, noise])
 
-            std_dev_labels = np.clip(np.random.normal(1, 0.5, size=(batch_size, 64 * 64, 1)), 0, 1)
-            real_labels = np.ones((batch_size, 64 * 64, 1))
+            std_dev_labels = np.clip(np.random.normal(1, 0.5, size=(batch_size, 32 * 32, 1)), 0, 1)
+            real_labels = np.ones((batch_size, 32 * 32, 1))
             masked_labels = 1 - world_masks_reshaped
 
             judge.trainable = True
-            j_real = judge.train_on_batch([world_batch_masked, world_batch], std_dev_labels)
-
-            j_real_acc_summary.value[0].simple_value = j_real[1]
-            tb_writer.add_summary(j_real_acc_summary, (epoch * number_of_batches) + minibatch_index)
-
+            # j_real = judge.train_on_batch([world_batch_masked, world_batch], std_dev_labels)
             j_fake = judge.train_on_batch([world_batch_masked, generated[1]], masked_labels)
+
+            # j_real_acc_summary.value[0].simple_value = j_real[1]
+            # tb_writer.add_summary(j_real_acc_summary, (epoch * number_of_batches) + minibatch_index)
 
             j_fake_acc_summary.value[0].simple_value = j_fake[1]
             tb_writer.add_summary(j_fake_acc_summary, (epoch * number_of_batches) + minibatch_index)
 
-            j_acc_summary.value[0].simple_value = (j_real[1] + j_fake[1]) / 2
-            tb_writer.add_summary(j_acc_summary, (epoch * number_of_batches) + minibatch_index)
+            # j_acc_summary.value[0].simple_value = (j_real[1] + j_fake[1]) / 2
+            # tb_writer.add_summary(j_acc_summary, (epoch * number_of_batches) + minibatch_index)
 
-            j_loss_summary.value[0].simple_value = (j_real[0] + j_fake[0]) / 2
-            tb_writer.add_summary(j_loss_summary, (epoch * number_of_batches) + minibatch_index)
+            # j_loss_summary.value[0].simple_value = (j_real[0] + j_fake[0]) / 2
+            # tb_writer.add_summary(j_loss_summary, (epoch * number_of_batches) + minibatch_index)
 
             judge.trainable = False
             h_loss = helper_feedback.train_on_batch([world_batch_masked, noise], real_labels)
@@ -308,7 +266,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=1, world_count=50000, initial_epoch=0)
+    train(epochs=100, batch_size=64, world_count=1000, initial_epoch=0)
 
 
 if __name__ == "__main__":

@@ -42,17 +42,13 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print("Loading encoding dictionaries...")
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
-    # Load minimap values
-    print("Loading minimap values...")
-    minimap_values = utils.load_minimap_values(res_dir)
-
     # Load model
     print("Loading model...")
     feature_model = auto_encoder.autoencoder_model()
-    feature_model.load_weights('%s\\auto_encoder\\ver12\\models\\epoch38\\autoencoder.weights' % all_models_dir)
+    feature_model.load_weights('%s\\auto_encoder\\ver15\\models\\epoch28\\autoencoder.weights' % all_models_dir)
     feature_layers = [7, 14, 21]
 
-    contextnet = PConvUnet(feature_model, feature_layers, width=64, height=64, inference_only=False)
+    contextnet = PConvUnet(feature_model, feature_layers, inference_only=False)
     unet = contextnet.build_pconv_unet(train_bn=True, lr=0.0001)
     unet.summary()
     # pconv_unet.load_weights('%s\\ver43\\models\\epoch4\\unet.weights' % contextnet_dir)
@@ -77,7 +73,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     cpu_count = multiprocessing.cpu_count()
     utilization_count = cpu_count - 1
     print("Loading worlds using %s cores." % utilization_count)
-    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, (64, 64), block_forward, utils.encode_world_sigmoid)
+    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, (128, 128), block_forward, utils.encode_world_sigmoid)
 
     # Start Training loop
     world_count = x_train.shape[0]
@@ -132,7 +128,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=1, world_count=60000, initial_epoch=0)
+    train(epochs=100, batch_size=1, world_count=20000, initial_epoch=0)
 
 
 if __name__ == "__main__":

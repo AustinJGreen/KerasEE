@@ -13,52 +13,26 @@ import utils
 from loadworker import load_worlds_with_files, load_worlds_with_labels
 
 
-def build_classifier():
+def build_classifier(size):
     model = Sequential()
 
-    model.add(Conv2D(filters=64, kernel_size=5, strides=1, padding='same', input_shape=(112, 112, 10)))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    f = 64
+    s = size
 
-    model.add(Conv2D(filters=64, kernel_size=3, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    while size > 7:
+        model.add(Conv2D(filters=f, kernel_size=5, strides=1, padding='same', input_shape=(112, 112, 10)))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(Activation('relu'))
 
-    model.add(MaxPooling2D(pool_size=(2, 2)))  # 56 x 56
-    model.add(SpatialDropout2D(0.3))
+        model.add(Conv2D(filters=f, kernel_size=3, strides=1, padding='same'))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(Activation('relu'))
 
-    model.add(Conv2D(filters=128, kernel_size=5, strides=1, padding='same', input_shape=(64, 64, 10)))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+        model.add(MaxPooling2D(pool_size=(2, 2)))  # 56 x 56
+        model.add(SpatialDropout2D(0.3))
 
-    model.add(Conv2D(filters=128, kernel_size=3, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(MaxPooling2D(pool_size=(2, 2)))  # 28 x 28
-    model.add(SpatialDropout2D(0.3))
-
-    model.add(Conv2D(filters=256, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2D(filters=256, kernel_size=3, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(MaxPooling2D(pool_size=(2, 2)))  # 14 x 14
-    model.add(SpatialDropout2D(0.3))
-
-    model.add(Conv2D(filters=512, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2D(filters=512, kernel_size=3, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(MaxPooling2D(pool_size=(2, 2)))  # 7 x 7
-    model.add(SpatialDropout2D(0.3))
+        f = f * 2
+        s = s // 2
 
     model.add(Flatten())
 
@@ -98,7 +72,7 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     print("Building model from scratch...")
     c_optim = Adam(lr=0.0001)
 
-    c = build_classifier()
+    c = build_classifier(112)
     c.compile(loss="binary_crossentropy", optimizer=c_optim, metrics=["accuracy"])
 
     print("Loading labels...")

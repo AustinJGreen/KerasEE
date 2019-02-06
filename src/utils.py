@@ -90,9 +90,9 @@ def convert_labels(raw_labels, categories=10, epsilon=1e-10):
     return soft_labels
 
 
-def random_mask_high(height, width, channels=11):
+def random_mask_high(width, height, channels=10):
     """Generates a random irregular mask based off of rectangles"""
-    mask = np.zeros((height, width, channels), np.int8)
+    mask = np.zeros((width, height, channels), np.int8)
 
     max_size = 12
 

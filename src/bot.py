@@ -32,7 +32,7 @@ def build_for(r, player_id):
     total_x = 0
     total_y = 0
     count = 0
-    for i in range(len(build_queue) - 1, 0, -1):
+    for i in range(len(build_queue) - 1, -1, -1):
         if build_queue[i][0] == player_id or True:
             x_coord = build_queue[i][1]
             y_coord = build_queue[i][2]
@@ -50,19 +50,19 @@ def build_for(r, player_id):
     avg_x = total_x // count
     avg_y = total_y // count
 
-    world_x1 = max(0, avg_x - 32)
-    world_x2 = min(world_data.shape[1], world_x1 + 64)
+    world_x1 = max(0, avg_x - 64)
+    world_x2 = min(world_data.shape[1] - 1, world_x1 + 128)
 
-    world_y1 = max(0, avg_y - 32)
-    world_y2 = min(world_data.shape[1], world_y1 + 64)
+    world_y1 = max(0, avg_y - 64)
+    world_y2 = min(world_data.shape[1] - 1, world_y1 + 128)
 
-    input_mask = np.ones((64, 64, 10), dtype=np.int8)
+    input_mask = np.ones((128, 128, 10), dtype=np.int8)
     for i in range(len(coords)):
         loc_x = coords[i][0] - world_x1
         loc_y = coords[i][1] - world_y2
         input_mask[loc_x, loc_y, :] = 0
 
-    input_data = np.zeros((64, 64), dtype=int)
+    input_data = np.zeros((128, 128), dtype=int)
     for x in range(world_x1, world_x2):
         for y in range(world_y1, world_y2):
             loc_x = x - world_x1
@@ -72,7 +72,7 @@ def build_for(r, player_id):
 
     utils.save_world_preview(block_images, input_data, '%s\\input.png' % cur_dir)
 
-    encoded_input = utils.encode_world_sigmoid(block_forward, input_data, 10)
+    encoded_input = utils.encode_world_sigmoid(block_forward, input_data)
     encoded_input[input_mask == 0] = 1
 
     encoded_context_data = None
@@ -169,7 +169,7 @@ version = client.bigdb_load('config', 'config')['version']
 
 # Join a room
 
-bot_room = client.create_join_room('PWepTmnQjRa0I', f'Everybodyedits{version}', True)
+bot_room = client.create_join_room('PWrO5qmOGjb0I', f'Everybodyedits{version}', True)
 
 # Send a message
 print("Joining world...")
@@ -180,9 +180,9 @@ build_queue = []  # (x, y) mask queue for bot
 cur_dir = 'C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\'
 
 print("Loading context model...")
-contextnet = unet_model.PConvUnet(None, [7, 14, 21], width=64, height=64, inference_only=True)
+contextnet = unet_model.PConvUnet(None, [7, 14, 21], inference_only=True)
 pconv_unet = contextnet.build_pconv_unet(train_bn=False, lr=0.0001)
-pconv_unet.load_weights('%s\\models\\inpainting\\ver2\\models\\epoch2\\unet.weights' % cur_dir)
+pconv_unet.load_weights('%s\\models\\inpainting\\ver8\\models\\epoch3\\unet.weights' % cur_dir)
 graph = tf.get_default_graph()
 
 print("Done loading model.")

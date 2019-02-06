@@ -9,12 +9,8 @@ from src.pconv_layer import PConv2D
 
 class PConvUnet:
 
-    def __init__(self, feature_model, feature_layers, width=64, height=64, inference_only=False):
+    def __init__(self, feature_model, feature_layers, inference_only=False):
         """Create the PConvUnet."""
-
-        # Settings
-        self.width = width
-        self.height = height
 
         self.inference_only = inference_only
 
@@ -30,7 +26,7 @@ class PConvUnet:
         self.model = self.build_pconv_unet()
 
     def build_feature_model(self, feature_model):
-        world = Input(shape=(self.width, self.height, 10))
+        world = Input(shape=(128, 128, 10))
 
         # If inference only, just return empty model
         if self.inference_only:
@@ -53,8 +49,8 @@ class PConvUnet:
     def build_pconv_unet(self, train_bn=True, lr=0.0002):
 
         # INPUTS
-        inputs_world = Input((64, 64, 10), name='inputs_world')
-        inputs_mask = Input((64, 64, 10), name='inputs_mask')
+        inputs_world = Input((128, 128, 10), name='inputs_world')
+        inputs_mask = Input((128, 128, 10), name='inputs_mask')
 
         # ENCODER
         def encoder_layer(img_in, mask_in, filters, kernel_size, bn=True):
