@@ -99,7 +99,19 @@ def build_discriminator():
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
+    model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(LeakyReLU())
+
+    model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
+    model.add(BatchNormalization(momentum=0.8))
+    model.add(LeakyReLU())
+
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+
     model.add(Flatten())
+
+    model.add(MaxPooling2D(pool_size=(2, 2)))
 
     model.add(Dense(256, activation='relu'))
     model.add(Dense(1, activation="sigmoid"))
@@ -122,7 +134,7 @@ def improved_loss(generator, discriminator):
     g_feature_model = generator
     g_feature_model.outputs = [generator.layers[i].output for i in g_feature_layers]
 
-    d_feature_layers = [7, 14, 21]
+    d_feature_layers = [7, 14, 21, 28]
     d_feature_model = discriminator
     d_feature_model.outputs = [discriminator.layers[i].output for i in d_feature_layers]
 
@@ -238,7 +250,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         d_on_g.compile(loss=improved_loss(g, d), optimizer=g_optim)
     else:
         print("Building model from scratch...")
-        d_optim = Adam(lr=0.00001)
+        d_optim = Adam(lr=0.00001, beta_1=0.5)
         g_optim = Adam(lr=0.0001, beta_1=0.5)
 
         d = build_discriminator()

@@ -158,10 +158,10 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print("Loading models...")
 
     judge = build_judge_model(32)
-    judge_optimizer = Adam(lr=0.00001)
+    judge_optimizer = Adam(lr=0.0001)
     judge.compile(loss="binary_crossentropy", optimizer=judge_optimizer, metrics=['accuracy'])
 
-    helper_optimizer = Adam(lr=0.0001)
+    helper_optimizer = Adam(lr=0.001)
     helper = build_helper_model(32)
     helper_feedback = build_helper_feedback_model(helper, judge, 32)
     helper_feedback.compile(loss="binary_crossentropy", optimizer=helper_optimizer)
@@ -213,25 +213,25 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             noise = np.random.normal(0, 1, size=(batch_size, 128))
             generated = helper.predict([world_batch_masked, noise])
 
-            std_dev_labels = np.clip(np.random.normal(1, 0.5, size=(batch_size, 32 * 32, 1)), 0, 1)
             real_labels = np.ones((batch_size, 32 * 32, 1))
+            fake_labels = np.zeros((batch_size, 32 * 32, 1))
             masked_labels = 1 - world_masks_reshaped
 
             judge.trainable = True
-            # j_real = judge.train_on_batch([world_batch_masked, world_batch], std_dev_labels)
-            j_fake = judge.train_on_batch([world_batch_masked, generated[1]], masked_labels)
+            j_real = judge.train_on_batch([world_batch_masked, world_batch], real_labels)
+            j_fake = judge.train_on_batch([world_batch_masked, generated[1]], fake_labels)
 
-            # j_real_acc_summary.value[0].simple_value = j_real[1]
-            # tb_writer.add_summary(j_real_acc_summary, (epoch * number_of_batches) + minibatch_index)
+            j_real_acc_summary.value[0].simple_value = j_real[1]
+            tb_writer.add_summary(j_real_acc_summary, (epoch * number_of_batches) + minibatch_index)
 
             j_fake_acc_summary.value[0].simple_value = j_fake[1]
             tb_writer.add_summary(j_fake_acc_summary, (epoch * number_of_batches) + minibatch_index)
 
-            # j_acc_summary.value[0].simple_value = (j_real[1] + j_fake[1]) / 2
-            # tb_writer.add_summary(j_acc_summary, (epoch * number_of_batches) + minibatch_index)
+            j_acc_summary.value[0].simple_value = (j_real[1] + j_fake[1]) / 2
+            tb_writer.add_summary(j_acc_summary, (epoch * number_of_batches) + minibatch_index)
 
-            # j_loss_summary.value[0].simple_value = (j_real[0] + j_fake[0]) / 2
-            # tb_writer.add_summary(j_loss_summary, (epoch * number_of_batches) + minibatch_index)
+            j_loss_summary.value[0].simple_value = (j_real[0] + j_fake[0]) / 2
+            tb_writer.add_summary(j_loss_summary, (epoch * number_of_batches) + minibatch_index)
 
             judge.trainable = False
             h_loss = helper_feedback.train_on_batch([world_batch_masked, noise], real_labels)
@@ -241,19 +241,23 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             tb_writer.flush()
 
             print(
-                "epoch [%d/%d] :: batch [%d/%d] :: j_fake_loss = %f :: j_fake_acc = %f :: h_loss = %f" % (
-                    epoch, epochs, minibatch_index, number_of_batches, j_fake[0], j_fake[1], h_loss))
+                "epoch [%d/%d] :: batch [%d/%d] :: j_fake_loss = %f :: j_fake_acc = %.1f%% :: j_real_loss = %f :: j_real_acc = %.1f%% :: h_loss = %f" % (
+                    epoch, epochs, minibatch_index, number_of_batches, j_fake[0], j_fake[1] * 100, j_real[0],
+                    j_real[1] * 100, h_loss))
 
             if minibatch_index % 1000 == 999 or minibatch_index == number_of_batches - 1:
-                actual_world = world_batch_masked[0]
-                a_decoded = utils.decode_world_sigmoid(block_backward, actual_world)
-                utils.save_world_preview(block_images, a_decoded,
-                                         '%s\\actual%s.png' % (cur_previews_dir, minibatch_index))
 
-                gen_world = generated[1][0]
-                decoded = utils.decode_world_sigmoid(block_backward, gen_world)
-                utils.save_world_preview(block_images, decoded,
-                                         '%s\\preview%s.png' % (cur_previews_dir, minibatch_index))
+                # Save generated batch
+                for i in range(batch_size):
+                    actual_world = world_batch_masked[i]
+                    a_decoded = utils.decode_world_sigmoid(block_backward, actual_world)
+                    utils.save_world_preview(block_images, a_decoded,
+                                             '%s\\actual%s.png' % (cur_previews_dir, i))
+
+                    gen_world = generated[1][i]
+                    decoded = utils.decode_world_sigmoid(block_backward, gen_world)
+                    utils.save_world_preview(block_images, decoded,
+                                             '%s\\preview%s.png' % (cur_previews_dir, i))
 
                 # Save models
                 try:
@@ -266,7 +270,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=64, world_count=1000, initial_epoch=0)
+    train(epochs=100, batch_size=50, world_count=20000, initial_epoch=0)
 
 
 if __name__ == "__main__":

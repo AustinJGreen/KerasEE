@@ -15,84 +15,37 @@ import utils
 from loadworker import load_worlds
 
 
-def autoencoder_model():
+def autoencoder_model(size):
     model = Sequential(name="autoencoder")
 
-    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same", input_shape=(128, 128, 10)))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    f = 64
+    s = size
 
-    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+    while s > 7:
+        model.add(Conv2D(f, kernel_size=5, strides=1, padding="same", input_shape=(size, size, 10)))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(Activation('relu'))
 
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(Conv2D(f, kernel_size=3, strides=1, padding="same"))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(Activation('relu'))
 
-    model.add(Conv2D(128, kernel_size=5, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+        model.add(MaxPooling2D(pool_size=(2, 2)))
 
-    model.add(Conv2D(128, kernel_size=5, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+        f = f * 2
+        s = s // 2
 
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+    while s < size:
+        model.add(Conv2DTranspose(f, kernel_size=3, strides=1, padding="same"))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(Activation('relu'))
 
-    model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+        model.add(Conv2DTranspose(f, kernel_size=5, strides=2, padding="same"))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(Activation('relu'))
 
-    model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-
-    model.add(Conv2D(512, kernel_size=5, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2D(512, kernel_size=5, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-
-    model.add(Conv2DTranspose(512, kernel_size=3, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2DTranspose(512, kernel_size=5, strides=2, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2DTranspose(256, kernel_size=3, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2DTranspose(256, kernel_size=5, strides=2, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2DTranspose(128, kernel_size=3, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2DTranspose(128, kernel_size=5, strides=2, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2DTranspose(64, kernel_size=3, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2DTranspose(64, kernel_size=5, strides=2, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
-
-    model.add(Conv2DTranspose(32, kernel_size=3, strides=1, padding="same"))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(Activation('relu'))
+        f = f // 2
+        s = s * 2
 
     model.add(Conv2DTranspose(10, kernel_size=5, strides=1, padding="same"))
     model.add(Activation('sigmoid'))
@@ -141,7 +94,7 @@ def train(epochs, batch_size, world_count, version_name=None):
         ae = load_model("%s\\autoencoder.h5" % version_dir)
     elif os.path.exists("%s\\autoencoder.model" % version_dir):
         print("Found weights.")
-        ae = autoencoder_model()
+        ae = autoencoder_model(112)
         ae.load_weights("%s\\autoencoder.model" % version_dir)
 
         print("Compiling model...")
@@ -149,7 +102,7 @@ def train(epochs, batch_size, world_count, version_name=None):
         ae.compile(loss="binary_crossentropy", optimizer=ae_optim)
     else:
         print("Compiling model...")
-        ae = autoencoder_model()
+        ae = autoencoder_model(112)
         print("Compiling model...")
         ae_optim = Adam(lr=0.0001)
         ae.compile(loss="binary_crossentropy", optimizer=ae_optim)
