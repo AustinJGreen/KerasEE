@@ -9,3 +9,4 @@ Judge is trained upon whether or not original comes from generated, 100% or 0% s
 Helper is trained upon
 
 Create model that takes in 64x64 input and outputs likelihood of 1 block in the center of the input
+

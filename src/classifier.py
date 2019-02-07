@@ -11,6 +11,7 @@ from keras.optimizers import Adam
 
 import utils
 from loadworker import load_worlds_with_files, load_worlds_with_labels
+from resnet import build_resnet50
 
 
 def build_classifier(size):
@@ -76,7 +77,12 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     print("Building model from scratch...")
     c_optim = Adam(lr=0.0001)
 
-    c = build_classifier(112)
+    # c = build_classifier(112)
+    c = build_resnet50()
+    c.load_weights(
+        "C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\models\\classifier\\ver42\\models\\latest.weights")
+
+    c.summary()
     c.compile(loss="binary_crossentropy", optimizer=c_optim, metrics=["accuracy"])
 
     print("Loading labels...")
@@ -101,17 +107,22 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
                                                          period=1)
 
     # Create callback for automatically saving lastest model so training can be resumed. Saves every epoch
-    check_latest_callback = keras.callbacks.ModelCheckpoint('%s\\latest.h5' % model_save_dir, verbose=0,
-                                                            save_best_only=False,
-                                                            save_weights_only=False, mode='auto', period=1)
+    latest_h5_callback = keras.callbacks.ModelCheckpoint('%s\\latest.h5' % model_save_dir, verbose=0,
+                                                         save_best_only=False,
+                                                         save_weights_only=False, mode='auto', period=1)
+
+    # Create callback for automatically saving lastest weights so training can be resumed. Saves every epoch
+    latest_weights_callback = keras.callbacks.ModelCheckpoint('%s\\latest.weights' % model_save_dir, verbose=0,
+                                                              save_best_only=False,
+                                                              save_weights_only=True, mode='auto', period=1)
 
     # Create callback for tensorboard
     tb_callback = keras.callbacks.TensorBoard(log_dir=graph_version_dir, batch_size=batch_size, write_graph=False,
                                               write_grads=True)
 
-    callback_list = [check_best_acc, check_latest_callback, tb_callback, check_best_val_acc]
+    callback_list = [check_best_acc, latest_h5_callback, latest_weights_callback, tb_callback, check_best_val_acc]
 
-    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list, validation_split=0)
+    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list, validation_split=0.2)
 
 
 def build_pro_repo(network_ver, dict_src_name):
@@ -259,9 +270,9 @@ def add_classifications(dict_src_name):
 
 
 def main():
-    train(epochs=30, batch_size=100, world_count=20000, dict_src_name='world_labels_d')
+    train(epochs=30, batch_size=100, world_count=30000, dict_src_name='world_labels_d')
     # build_pro_repo('ver18', dict_src_name='world_labels_d')
-    # classify_worlds('ver32', dict_src_name='world_labels_d')
+    # classify_worlds('ver34', dict_src_name='world_labels_d')
     # add_classifications(dict_src_name='world_labels_d')
 
 
