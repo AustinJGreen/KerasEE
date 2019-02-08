@@ -44,8 +44,6 @@ def build_classifier(size):
     model.add(Dense(128, activation='relu'))
 
     model.add(Dense(1, activation='sigmoid'))
-
-    model.summary()
     return model
 
 
@@ -89,7 +87,7 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
                                                 block_forward,
                                                 utils.encode_world_sigmoid, overlap_x=1, overlap_y=1)
 
-    y_train = utils.convert_labels(y_labels, categories=2, epsilon=0)
+    y_train = utils.convert_labels_binary(y_labels, epsilon=0)
 
     # Create callback for automatically saving best model based on highest regular accuracy
     check_best_acc = keras.callbacks.ModelCheckpoint('%s\\best_acc.h5' % model_save_dir, monitor='acc', verbose=0,
@@ -118,7 +116,7 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
 
     callback_list = [check_best_acc, latest_h5_callback, latest_weights_callback, tb_callback, check_best_val_acc]
 
-    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list, validation_split=0)
+    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list, validation_split=0.2)
 
 
 def main():

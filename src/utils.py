@@ -90,6 +90,17 @@ def convert_labels(raw_labels, categories=10, epsilon=1e-10):
     return soft_labels
 
 
+def convert_labels_binary(raw_labels, epsilon=1e-10):
+    hot_value = 1 - epsilon
+    label_count = raw_labels.shape[0]
+    soft_labels = np.full((label_count, 1), fill_value=epsilon, dtype=float)
+
+    for label in range(label_count):
+        if raw_labels[label] == 1:
+            soft_labels[label] = hot_value
+
+    return soft_labels
+
 def random_mask_high(width, height, channels=10):
     """Generates a random irregular mask based off of rectangles"""
     mask = np.zeros((width, height, channels), np.int8)

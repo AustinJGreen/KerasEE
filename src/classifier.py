@@ -44,8 +44,6 @@ def build_classifier(size):
     model.add(Dense(128, activation='relu'))
 
     model.add(Dense(3, activation='softmax'))
-
-    model.summary()
     return model
 
 

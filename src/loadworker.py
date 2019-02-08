@@ -54,8 +54,14 @@ def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, b
     with Manager() as manager:
         file_queue = manager.Queue()
 
+        dict_keys = []
         for world_id in label_dict.keys():
-            file_queue.put('%s\\%s.world' % (world_directory, world_id))
+            dict_keys.append('%s\\%s.world' % (world_directory, world_id))
+
+        # Shuffle keys
+        random.shuffle(dict_keys)
+        for key in dict_keys:
+            file_queue.put(key)
 
         world_array = np.zeros((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
         world_labels = np.zeros((load_count, 1), dtype=np.int8)
