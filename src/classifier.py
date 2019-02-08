@@ -11,7 +11,6 @@ from keras.optimizers import Adam
 
 import utils
 from loadworker import load_worlds_with_files, load_worlds_with_labels
-from resnet import build_resnet50
 
 
 def build_classifier(size):
@@ -77,10 +76,10 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     print("Building model from scratch...")
     c_optim = Adam(lr=0.0001)
 
-    # c = build_classifier(112)
-    c = build_resnet50()
-    c.load_weights(
-        "C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\models\\classifier\\ver42\\models\\latest.weights")
+    c = build_classifier(112)
+    # c = build_resnet50()
+    # c.load_weights(
+    #    "C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\models\\classifier\\ver44\\models\\latest.weights")
 
     c.summary()
     c.compile(loss="binary_crossentropy", optimizer=c_optim, metrics=["accuracy"])
@@ -122,7 +121,7 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
 
     callback_list = [check_best_acc, latest_h5_callback, latest_weights_callback, tb_callback, check_best_val_acc]
 
-    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list, validation_split=0.2)
+    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list, validation_split=0)
 
 
 def build_pro_repo(network_ver, dict_src_name):
@@ -143,14 +142,17 @@ def build_pro_repo(network_ver, dict_src_name):
     print("Loading encoding dictionaries...")
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
-    x_data, x_files = load_worlds_with_files(60000, '%s\\worlds\\' % res_dir, (128, 128), block_forward,
+    x_data, x_files = load_worlds_with_files(60000, '%s\\worlds\\' % res_dir, (112, 112), block_forward,
                                              utils.encode_world_sigmoid)
 
     x_labeled = utils.load_label_dict(res_dir, dict_src_name)
 
     # Save preexisting worlds
-    # for x_label in x_labeled.keys():
-    #    if x_labeled[x_label] == 2:
+    for x_label in x_labeled.keys():
+        if x_labeled[x_label] == 2:
+            world = utils.load_world_data_ver3('%s\\worlds\\%s.world' % (res_dir, x_label))
+            if world is not None:
+                utils.save_world_preview(block_images, world, '%s\\%s.png' % (proworlds_dir, x_label))
 
     batch_size = 50
     batches = x_data.shape[0] // batch_size
@@ -165,9 +167,10 @@ def build_pro_repo(network_ver, dict_src_name):
             world_id = utils.get_world_id(world_file)
 
             prediction = y_batch[world]
-            if prediction[2] >= 0.8:
-                decoded = utils.decode_world_sigmoid(block_backward, x_batch[world])
-                utils.save_world_preview(block_images, decoded, '%s\\%s.png' % (proworlds_dir, world_id))
+            if prediction[2] > prediction[1] and prediction[2] > prediction[0]:
+                world = utils.load_world_data_ver3('%s\\worlds\\%s.world' % (res_dir, world_id))
+                if world is not None:
+                    utils.save_world_preview(block_images, world, '%s\\%s.png' % (proworlds_dir, world_id))
 
 
 def classify_worlds(network_ver, dict_src_name):
@@ -270,8 +273,8 @@ def add_classifications(dict_src_name):
 
 
 def main():
-    train(epochs=30, batch_size=100, world_count=30000, dict_src_name='world_labels_d')
-    # build_pro_repo('ver18', dict_src_name='world_labels_d')
+    train(epochs=35, batch_size=100, world_count=22000, dict_src_name='world_labels_d')
+    # build_pro_repo('ver47', dict_src_name='world_labels_d')
     # classify_worlds('ver34', dict_src_name='world_labels_d')
     # add_classifications(dict_src_name='world_labels_d')
 

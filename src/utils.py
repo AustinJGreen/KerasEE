@@ -471,6 +471,9 @@ def load_world_data_ver2(world_file):
 
 
 def load_world_data_ver3(world_file):
+    if not os.path.exists(world_file):
+        return None
+
     world_data_stream = gzip.open(world_file, "r")
     world_data = world_data_stream.readline().decode("utf8").split(',')
     world_data_stream.close()
@@ -560,6 +563,9 @@ def save_world_minimap3d(minimap, world_data, name):
 
 
 def save_world_preview(block_images, world_data, name):
+    if os.path.exists(name):
+        return
+
     try:
         width = world_data.shape[0]
         height = world_data.shape[1]
