@@ -1,5 +1,4 @@
 import gzip
-import math
 import os
 from random import randint
 from shutil import copyfile
@@ -189,17 +188,6 @@ def mask_batch_low(batch):
     return masked, masks
 
 
-def decode_world2d(block_backward_dict, world_data):
-    width = world_data.shape[0]
-    height = world_data.shape[1]
-    world_copy = np.zeros((width, height), dtype=int)
-    for y in range(height):
-        for x in range(width):
-            encoded_value = world_data[x, y, 0]
-            world_copy[x, y] = decode_block(block_backward_dict, encoded_value, 0)
-    return world_copy
-
-
 def decode_world_sigmoid(block_backward, world_data):
     bits = world_data.shape[2]
     width = world_data.shape[0]
@@ -247,42 +235,6 @@ def decode_world_tanh(block_backward, world_data):
                 value = 0
 
             world_copy[x, y] = int(value)
-    return world_copy
-
-
-def decode_block(block_backward_dict, encoded_value, layer):
-    if not np.isscalar(encoded_value):
-        encoded_value = encoded_value[0]
-
-    category_max = len(block_backward_dict[layer]) - 1
-    hash_decimal = (((encoded_value + 1) / 2) * category_max)
-    truncated_hash = math.floor(hash_decimal)
-    if truncated_hash in block_backward_dict[layer]:
-        block_id = block_backward_dict[layer][truncated_hash]
-        return block_id
-    else:
-        # print("Decode not in list, value is %s" % truncatedHash)
-        return 0
-
-
-def encode_world2d(block_forward_dict, world_data):
-    width = world_data.shape[0]
-    height = world_data.shape[1]
-    world_copy = np.zeros((width, height, 1), dtype=float)
-
-    if len(world_data.shape) == 2:
-        for y in range(height):
-            for x in range(width):
-                layer, value = encode_block(block_forward_dict, world_data[x, y])
-                # world_copy[x, y, 0] = (layer / 2) - 1
-                world_copy[x, y, 0] = value
-    elif len(world_data.shape) == 3:  # Just take foreground
-        for y in range(height):
-            for x in range(width):
-                layer, value = encode_block(block_forward_dict, world_data[x, y, 0])
-                # world_copy[x, y, 0] = (layer / 2) - 1
-                world_copy[x, y, 0] = value
-
     return world_copy
 
 
@@ -350,15 +302,6 @@ def encode_world_tanh(block_forward, world_data):
                     world_copy[x, y, bits - 1 - bit] = bit_value_reshaped  # [-1, 1]
 
     return world_copy
-
-
-def encode_block(block_forward_dict, block_id):
-    block_category = 0  # blocks.get_block_category(block_id)
-    if block_id not in block_forward_dict[block_category]:
-        return encode_block(block_forward_dict, 0)
-
-    category_max = len(block_forward_dict[block_category]) - 1
-    return block_category, ((block_forward_dict[block_category][block_id] / category_max) * 2) - 1  # [-1, 1] scaling
 
 
 def encode_block_color(minimap_values, block):
