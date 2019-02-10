@@ -20,15 +20,7 @@ def build_animator(size):
     x = BatchNormalization(momentum=0.8)(x)
     x = Activation('relu')(x)
 
-    x = Conv2D(filters=256, kernel_size=5, strides=1, padding='same')(x)
-    x = BatchNormalization(momentum=0.8)(x)
-    x = Activation('relu')(x)
-
     x = Conv2D(filters=128, kernel_size=3, strides=1, padding='same')(x)
-    x = BatchNormalization(momentum=0.8)(x)
-    x = Activation('relu')(x)
-
-    x = Conv2D(filters=128, kernel_size=5, strides=1, padding='same')(x)
     x = BatchNormalization(momentum=0.8)(x)
     x = Activation('relu')(x)
 
@@ -96,6 +88,9 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print("Loading minimap values...")
     minimap_values = utils.load_minimap_values(res_dir)
 
+    print("Loading block images...")
+    block_images = utils.load_block_images(res_dir)
+
     print("Loading encoding dictionaries...")
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
 
@@ -126,6 +121,19 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         for minibatch_index in range(number_of_batches):
             worlds = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
             minimaps = get_minimaps(worlds, block_backward, minimap_values)
+
+            if minibatch_index == number_of_batches - 1:
+                generated = animator.predict(minimaps)
+
+                for batchImage in range(batch_size):
+                    generated_world = generated[batchImage]
+                    decoded_generated = utils.decode_world_sigmoid(block_backward, generated_world)
+                    utils.save_world_preview(block_images, decoded_generated,
+                                             "%s\\generated%s.png" % (cur_previews_dir, batchImage))
+
+                    decoded_world = utils.decode_world_sigmoid(block_backward, worlds[batchImage])
+                    utils.save_world_minimap(minimap_values, decoded_world,
+                                             '%s\\target%s.png' % (cur_previews_dir, batchImage))
 
             loss = animator.train_on_batch(minimaps, worlds)
             print("epoch = %s, loss = %s" % (epoch, loss))
