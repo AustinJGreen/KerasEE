@@ -13,14 +13,10 @@ import utils
 from loadworker import load_worlds
 
 
-def build_animator(size):
-    input = Input(shape=(size, size, 3))
+def build_animator(block_backwards, minimap_values, size):
+    input_tensor = Input(shape=(size, size, 3))
 
-    x = Conv2D(filters=256, kernel_size=3, strides=1, padding='same')(input)
-    x = BatchNormalization(momentum=0.8)(x)
-    x = Activation('relu')(x)
-
-    x = Conv2D(filters=128, kernel_size=3, strides=1, padding='same')(x)
+    x = Conv2D(filters=512, kernel_size=3, strides=1, padding='same')(input_tensor)
     x = BatchNormalization(momentum=0.8)(x)
     x = Activation('relu')(x)
 
@@ -28,8 +24,8 @@ def build_animator(size):
     x = BatchNormalization(momentum=0.8)(x)
     x = Activation('sigmoid')(x)
 
-    animator_model = Model(inputs=[input], outputs=[x])
-    return animator_model, input
+    animator_model = Model(inputs=[input_tensor], outputs=[x])
+    return animator_model, input_tensor
 
 
 def get_minimaps(worlds, block_backward, minimap_values):
@@ -92,12 +88,12 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     block_images = utils.load_block_images(res_dir)
 
     print("Loading encoding dictionaries...")
-    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
+    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_colored')
 
     print("Building model from scratch...")
     optim = Adam(lr=0.0001)
 
-    animator, c_input = build_animator(112)
+    animator, c_input = build_animator(block_backward, minimap_values, 112)
 
     animator.summary()
     animator.compile(loss='mse', optimizer=optim)
@@ -108,6 +104,9 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
+
+    # Initialize tables for Hashtable tensors
+    K.get_session().run(tf.tables_initializer())
 
     for epoch in range(initial_epoch, epochs):
 
@@ -135,7 +134,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                     utils.save_world_minimap(minimap_values, decoded_world,
                                              '%s\\target%s.png' % (cur_previews_dir, batchImage))
 
-            loss = animator.train_on_batch(minimaps, worlds)
+            loss = animator.train_on_batch(minimaps, minimaps)
             print("epoch = %s, loss = %s" % (epoch, loss))
 
 

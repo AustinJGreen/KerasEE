@@ -1,7 +1,7 @@
 import gzip
 import os
 from random import randint
-from shutil import copyfile
+from shutil import copyfile, rmtree
 
 import numpy as np
 from PIL import Image
@@ -555,20 +555,13 @@ def check_or_create_local_path(name, base_dir=None):
     return local_dir
 
 
+def delete_folder(path):
+    rmtree(path, ignore_errors=True)
+
+
 def delete_files_in_path(path):
-    for filename in os.listdir(path):
-        file_path = os.path.join(path, filename)
-        try:
-            if os.path.isfile(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                if delete_files_in_path(file_path):
-                    os.rmdir(file_path)
-                else:
-                    return False
-        except:
-            return False
-    return True
+    delete_folder(path)
+    os.mkdir(path)
 
 
 def delete_empty_versions(base_dir, min_files):
@@ -583,12 +576,10 @@ def delete_empty_versions(base_dir, min_files):
                     os.listdir(graph_ver_dir)) < min_files:  # 1 is just model in graph
 
                 # Delete both directories
-                if delete_files_in_path(version_dir):
-                    os.rmdir(version_dir)
+                delete_folder(version_dir)
 
                 if os.path.exists(graph_ver_dir):
-                    if delete_files_in_path(graph_ver_dir):
-                        os.rmdir(graph_ver_dir)
+                    delete_folder(graph_ver_dir)
 
 
 def save_source_to_dir(base_dir):

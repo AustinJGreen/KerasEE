@@ -15,7 +15,7 @@ world_data = None  # block data for bot
 pconv_unet = None
 block_images = utils.load_block_images('C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\res\\')
 block_forward, block_backward = utils.load_encoding_dict('C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\res\\',
-                                                         'optimized')
+                                                         'blocks_optimized')
 global graph
 
 

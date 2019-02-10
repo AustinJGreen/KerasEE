@@ -40,7 +40,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     block_images = utils.load_block_images(res_dir)
 
     print("Loading encoding dictionaries...")
-    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
+    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     # Load model
     print("Loading model...")

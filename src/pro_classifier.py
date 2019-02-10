@@ -69,7 +69,7 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     utils.save_source_to_dir(version_dir)
 
     print("Loading encoding dictionaries...")
-    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
+    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     print("Building model from scratch...")
     c_optim = Adam(lr=0.0001)
@@ -116,7 +116,7 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
 
     callback_list = [check_best_acc, latest_h5_callback, latest_weights_callback, tb_callback, check_best_val_acc]
 
-    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list, validation_split=0)
+    c.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list, validation_split=0.2)
 
 
 def predict(network_ver, dict_src_name):
@@ -140,7 +140,7 @@ def predict(network_ver, dict_src_name):
     block_images = utils.load_block_images(res_dir)
 
     print("Loading encoding dictionaries...")
-    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'optimized')
+    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     x_data, x_files = load_worlds_with_files(5000, '%s\\worlds\\' % res_dir, (112, 112), block_forward)
 
@@ -200,9 +200,9 @@ def add_training_data(current_label_dict):
 
 
 def main():
-    # train(epochs=13, batch_size=100, world_count=25000, dict_src_name='pro_labels')
+    train(epochs=50, batch_size=16, world_count=25000, dict_src_name='pro_labels_b')
     # predict('ver9', dict_src_name='pro_labels')
-    add_training_data('pro_labels')
+    # add_training_data('pro_labels')
 
 
 if __name__ == "__main__":
