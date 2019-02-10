@@ -17,3 +17,6 @@ Train multiple classifiers for each type
 
 -Add more data, scrape by authors instead of by likes
     - Can scrape authors from current worlds folder
+
+-Model that turns image into handmade art
+    - Actually might be pretty easy, just train network to produce blocks from minimap

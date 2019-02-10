@@ -9,7 +9,8 @@ import numpy as np
 import utils
 
 
-def load_worlds(load_count, world_directory, gen_size, block_forward, encode_func, overlap_x=1, overlap_y=1):
+def load_worlds(load_count, world_directory, gen_size, block_forward, encode_func=utils.encode_world_sigmoid,
+                overlap_x=1, overlap_y=1):
     world_names = os.listdir(world_directory)
     random.shuffle(world_names)
 
@@ -47,7 +48,8 @@ def load_worlds(load_count, world_directory, gen_size, block_forward, encode_fun
     return world_array
 
 
-def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, block_forward, encode_func, overlap_x=1,
+def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, block_forward,
+                            encode_func=utils.encode_world_sigmoid, overlap_x=1,
                             overlap_y=1):
     thread_count = cpu_count() - 1
 
@@ -93,7 +95,8 @@ def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, b
     return world_array, world_labels
 
 
-def load_worlds_with_files(load_count, world_directory, gen_size, block_forward, encode_func, overlap_x=1, overlap_y=1):
+def load_worlds_with_files(load_count, world_directory, gen_size, block_forward, encode_func=utils.encode_world_sigmoid,
+                           overlap_x=1, overlap_y=1):
     world_names = os.listdir(world_directory)
     random.shuffle(world_names)
 
