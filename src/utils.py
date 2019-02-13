@@ -595,6 +595,25 @@ def get_world_id(world_file):
     return os.path.splitext(base)[0]
 
 
+def get_latest_epoch(directory):
+    highest_epoch = -1
+    for path in os.listdir(directory):
+        fullpath = os.path.join(directory, path)
+        if os.path.isdir(fullpath):
+
+            # Check if directory is empty
+            isempty = len(os.listdir(fullpath)) == 0
+            if isempty:
+                continue
+
+            if path[:5] == 'epoch':
+                path_epoch = int(path[5:])
+                if path_epoch > highest_epoch:
+                    highest_epoch = path_epoch
+
+    return highest_epoch
+
+
 def get_latest_version(directory):
     highest_ver = 0
     for path in os.listdir(directory):

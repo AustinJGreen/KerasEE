@@ -62,14 +62,13 @@ def build_generator():
     model.add(Activation('sigmoid'))
 
     model.trainable = True
-    model.summary()
     return model
 
 
 def build_discriminator():
     model = Sequential(name="discriminator")
 
-    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same", input_shape=(64, 64, 10)))
+    model.add(Conv2D(64, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(LeakyReLU())
 
@@ -99,11 +98,11 @@ def build_discriminator():
 
     model.add(MaxPooling2D(pool_size=(2, 2)))
 
-    model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
+    model.add(Conv2D(512, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(LeakyReLU())
 
-    model.add(Conv2D(256, kernel_size=5, strides=1, padding="same"))
+    model.add(Conv2D(512, kernel_size=5, strides=1, padding="same"))
     model.add(BatchNormalization(momentum=0.8))
     model.add(LeakyReLU())
 
@@ -111,13 +110,10 @@ def build_discriminator():
 
     model.add(Flatten())
 
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-
     model.add(Dense(256, activation='relu'))
     model.add(Dense(1, activation="sigmoid"))
 
     model.trainable = True
-    model.summary()
     return model
 
 
@@ -130,13 +126,6 @@ def generator_containing_discriminator(g, d):
 
 
 def improved_loss(generator, discriminator):
-    g_feature_layers = [7, 13, 19, 25]
-    g_feature_model = generator
-    g_feature_model.outputs = [generator.layers[i].output for i in g_feature_layers]
-
-    d_feature_layers = [7, 14, 21, 28]
-    d_feature_model = discriminator
-    d_feature_model.outputs = [discriminator.layers[i].output for i in d_feature_layers]
 
     def l1(y_true, y_pred):
         """Calculate the L1 loss used in all loss calculations"""
@@ -233,7 +222,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         else:
             g_optim = Adam(lr=0.0001, beta_1=0.5)
             d_on_g = generator_containing_discriminator(g, d)
-            d_on_g.compile(loss="binary_crossentropy", optimizer=g_optim)
+            d_on_g.compile(loss=improved_loss(g, d), optimizer=g_optim)
     elif os.path.exists("%s\\discriminator.weights" % cur_models) and os.path.exists(
             "%s\\generator.weights" % cur_models):
         print("Building model with weights...")
@@ -259,7 +248,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         g = build_generator()
         d_on_g = generator_containing_discriminator(g, d)
 
-        d_on_g.compile(loss="binary_crossentropy", optimizer=g_optim)
+        d_on_g.compile(loss=improved_loss(g, d), optimizer=g_optim)
 
     if no_version:
         # Delete existing worlds and previews if any

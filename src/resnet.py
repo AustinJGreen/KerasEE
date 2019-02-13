@@ -1,13 +1,13 @@
 from keras.layers import Dense, Input
 from keras.layers.convolutional import Conv2D
-from keras.layers.core import Activation
+from keras.layers.core import Activation, Dropout
 from keras.layers.merge import Add
 from keras.layers.normalization import BatchNormalization
 from keras.layers.pooling import MaxPooling2D, GlobalAveragePooling2D
 from keras.models import Model
 
 
-def identity_block(input_tensor, kernel_size, filters, stage, block, freeze=False):
+def identity_block(input_tensor, kernel_size, filters, stage, block, freeze=False, dropout=True):
     train = not freeze
     filters1, filters2, filters3 = filters
 
@@ -26,6 +26,8 @@ def identity_block(input_tensor, kernel_size, filters, stage, block, freeze=Fals
                name=conv_name_base + '2b', trainable=train)(x)
     x = BatchNormalization(axis=3, name=bn_name_base + '2b', trainable=train)(x)
     x = Activation('relu', trainable=train)(x)
+    if dropout:
+        x = Dropout(0.1)(x)
 
     x = Conv2D(filters3, (1, 1),
                kernel_initializer='he_normal',
@@ -43,7 +45,7 @@ def conv_block(input_tensor,
                stage,
                block,
                strides=(2, 2),
-               freeze=False):
+               freeze=False, dropout=True):
     train = not freeze
     filters1, filters2, filters3 = filters
 
@@ -61,6 +63,8 @@ def conv_block(input_tensor,
                name=conv_name_base + '2b', trainable=train)(x)
     x = BatchNormalization(axis=3, name=bn_name_base + '2b', trainable=train)(x)
     x = Activation('relu', trainable=train)(x)
+    if dropout:
+        x = Dropout(0.1)(x)
 
     x = Conv2D(filters3, (1, 1),
                kernel_initializer='he_normal',

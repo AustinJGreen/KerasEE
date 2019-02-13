@@ -5,12 +5,13 @@ from keras.layers import Dense, SpatialDropout2D
 from keras.layers.convolutional import Conv2D
 from keras.layers.core import Activation, Flatten
 from keras.layers.normalization import BatchNormalization
-from keras.layers.pooling import MaxPooling2D
+from keras.layers.pooling import AveragePooling2D
 from keras.models import Sequential, load_model
 from keras.optimizers import Adam
 
 import utils
 from loadworker import load_worlds_with_labels, load_worlds_with_files
+from wide_resnet import build_wide_resnet
 
 
 def build_classifier(size):
@@ -32,7 +33,7 @@ def build_classifier(size):
         model.add(BatchNormalization(momentum=0.8))
         model.add(Activation('relu'))
 
-        model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(AveragePooling2D(pool_size=(2, 2)))
         model.add(SpatialDropout2D(0.2))
 
         f = f * 2
@@ -74,8 +75,9 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     print("Building model from scratch...")
     c_optim = Adam(lr=0.0001)
 
-    c = build_classifier(112)
-    # c = build_resnet18(1)
+    # c = build_classifier(112)
+    # c = build_resnet50(1)
+    c = build_wide_resnet(input_dim=(112, 112, 10), nb_classes=1, N=2, k=1, dropout=0.1)
 
     c.summary()
     c.compile(loss="binary_crossentropy", optimizer=c_optim, metrics=["accuracy"])
@@ -200,9 +202,9 @@ def add_training_data(current_label_dict):
 
 
 def main():
-    train(epochs=50, batch_size=16, world_count=25000, dict_src_name='pro_labels_b')
-    # predict('ver9', dict_src_name='pro_labels')
-    # add_training_data('pro_labels')
+    train(epochs=50, batch_size=100, world_count=25000, dict_src_name='pro_labels_b')
+    # predict('ver9', dict_src_name='pro_labels_b')
+    # add_training_data('pro_labels_b')
 
 
 if __name__ == "__main__":

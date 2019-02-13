@@ -22,11 +22,11 @@ def autoencoder_model(size):
     s = size
 
     while s > 7:
-        model.add(Conv2D(f, kernel_size=5, strides=1, padding="same", input_shape=(size, size, 10)))
+        model.add(Conv2D(f, kernel_size=5, strides=1, padding='same', input_shape=(size, size, 10)))
         model.add(BatchNormalization(momentum=0.8))
         model.add(Activation('relu'))
 
-        model.add(Conv2D(f, kernel_size=3, strides=1, padding="same"))
+        model.add(Conv2D(f, kernel_size=5, strides=1, padding='same'))
         model.add(BatchNormalization(momentum=0.8))
         model.add(Activation('relu'))
 
@@ -36,18 +36,18 @@ def autoencoder_model(size):
         s = s // 2
 
     while s < size:
-        model.add(Conv2DTranspose(f, kernel_size=3, strides=1, padding="same"))
+        model.add(Conv2DTranspose(f, kernel_size=5, strides=1, padding='same'))
         model.add(BatchNormalization(momentum=0.8))
         model.add(Activation('relu'))
 
-        model.add(Conv2DTranspose(f, kernel_size=5, strides=2, padding="same"))
+        model.add(Conv2DTranspose(f, kernel_size=5, strides=2, padding='same'))
         model.add(BatchNormalization(momentum=0.8))
         model.add(Activation('relu'))
 
         f = f // 2
         s = s * 2
 
-    model.add(Conv2DTranspose(10, kernel_size=5, strides=1, padding="same"))
+    model.add(Conv2DTranspose(10, kernel_size=5, strides=1, padding='same'))
     model.add(Activation('sigmoid'))
 
     model.trainable = True
@@ -75,6 +75,9 @@ def train(epochs, batch_size, world_count, version_name=None):
     previews_dir = utils.check_or_create_local_path("previews", version_dir)
     model_save_dir = utils.check_or_create_local_path("models", version_dir)
 
+    lastest_epoch = utils.get_latest_epoch(model_save_dir)
+    initial_epoch = lastest_epoch + 1
+
     print("Saving source...")
     utils.save_source_to_dir(version_dir)
 
@@ -89,18 +92,24 @@ def train(epochs, batch_size, world_count, version_name=None):
     print("Loading model...")
 
     # Try to load full model, otherwise try to load weights
-    if os.path.exists("%s\\autoencoder.h5" % version_dir):
-        print("Found models.")
-        ae = load_model("%s\\autoencoder.h5" % version_dir)
-    elif os.path.exists("%s\\autoencoder.model" % version_dir):
-        print("Found weights.")
-        ae = autoencoder_model(112)
-        ae.load_weights("%s\\autoencoder.model" % version_dir)
+    loaded_model = False
+    if not no_version and lastest_epoch != -1:
+        if os.path.exists("%s\\models\\epoch%s\\autoencoder.h5" % (version_dir, lastest_epoch)):
+            print("Found models.")
+            ae = load_model("%s\\models\\epoch%s\\autoencoder.h5" % (version_dir, lastest_epoch))
+            loaded_model = True
+        elif os.path.exists("%s\\models\\epoch%s\\autoencoder.weights" % (version_dir, lastest_epoch)):
+            print("Found weights.")
+            ae = autoencoder_model(112)
+            ae.load_weights("%s\\models\\epoch%s\\autoencoder.weights" % (version_dir, lastest_epoch))
 
-        print("Compiling model...")
-        ae_optim = Adam(lr=0.0001)
-        ae.compile(loss="binary_crossentropy", optimizer=ae_optim)
-    else:
+            print("Compiling model...")
+            ae_optim = Adam(lr=0.0001)
+            ae.compile(loss="binary_crossentropy", optimizer=ae_optim)
+            loaded_model = True
+
+    # Model was not loaded, compile new one
+    if not loaded_model:
         print("Compiling model...")
         ae = autoencoder_model(112)
         print("Compiling model...")
@@ -128,13 +137,13 @@ def train(epochs, batch_size, world_count, version_name=None):
 
     # Load Data
     print("Loading worlds...")
-    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, (128, 128), block_forward)
+    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, (112, 112), block_forward)
 
     # Start Training loop
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
 
-    for epoch in range(epochs):
+    for epoch in range(initial_epoch, epochs):
 
         # Create directories for current epoch
         cur_worlds_cur = utils.check_or_create_local_path("epoch%s" % epoch, worlds_dir)
@@ -190,7 +199,7 @@ def train(epochs, batch_size, world_count, version_name=None):
 
 
 def main():
-    train(epochs=100, batch_size=32, world_count=50000)
+    train(epochs=100, batch_size=32, world_count=30000, version_name='ver17')
 
 
 if __name__ == "__main__":
