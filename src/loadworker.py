@@ -9,6 +9,65 @@ import numpy as np
 import utils
 
 
+def load_world(world_file, gen_size, block_forward, encode_func=utils.encode_world_sigmoid, overlap_x=1, overlap_y=1):
+    if not os.path.exists(world_file):
+        return
+
+    world = utils.load_world_data_ver3(world_file)
+    world_width = world.shape[0]
+    world_height = world.shape[1]
+
+    # Check if need to resize width
+    if world_width < gen_size[0]:
+        # Random placement along x axis
+        displace_x = np.random.randint(0, gen_size[0] - world_width + 1)
+
+        world_resized = np.zeros((gen_size[0], world_height), dtype=np.int8)
+        world_resized[displace_x:displace_x + world_width, :] = world
+        world = world_resized
+        world_width = gen_size[0]
+
+    # Check if need to resize height
+    if world_height < gen_size[1]:
+        # Random placement along y axis
+        displace_y = np.random.randint(0, gen_size[1] - world_height + 1)
+
+        world_resized = np.zeros((world_width, gen_size[1]), dtype=np.int8)
+        world_resized[:, displace_y:displace_y + world_height] = world
+        world = world_resized
+        world_height = gen_size[1]
+
+    x_margin = world_width % gen_size[0]
+    y_margin = world_height % gen_size[1]
+
+    x_min_increment = overlap_x * gen_size[0]
+    y_min_increment = overlap_y * gen_size[1]
+
+    x_offset = np.random.randint(0, x_margin + 1)
+    y_offset = np.random.randint(0, y_margin + 1)
+
+    encoded_worlds = []
+
+    x_start = x_offset
+    while x_start + gen_size[0] <= world_width:
+
+        y_start = y_offset
+        while y_start + gen_size[1] <= world_height:
+            x_end = x_start + gen_size[0]
+            y_end = y_start + gen_size[1]
+
+            cross_section = world[x_start:x_end, y_start:y_end]
+
+            if is_good_world(cross_section):
+                encoded_world = encode_func(block_forward, cross_section)
+                encoded_worlds.append(encoded_world)
+
+            y_start += np.random.randint(y_min_increment, gen_size[1] + 1)
+
+        x_start += np.random.randint(x_min_increment, gen_size[0] + 1)
+    return encoded_worlds
+
+
 def load_worlds(load_count, world_directory, gen_size, block_forward, encode_func=utils.encode_world_sigmoid,
                 overlap_x=1, overlap_y=1):
     world_names = os.listdir(world_directory)
@@ -137,6 +196,26 @@ def load_worlds_with_files(load_count, world_directory, gen_size, block_forward,
     return world_array, world_files
 
 
+def is_good_world(cross_section):
+    # - Count blocks
+    # - Diversity of blocks
+    edited_blocks = 0
+    distinct_ids = []
+    width = cross_section.shape[0]
+    height = cross_section.shape[1]
+    for x in range(width):
+        for y in range(height):
+            block = cross_section[x, y]
+            if block != 0:
+                edited_blocks += 1
+            if block not in distinct_ids:
+                distinct_ids.append(block)
+
+    total_size = width * height
+    required = int(0.5 * total_size)
+    return edited_blocks >= required and len(distinct_ids) >= 6
+
+
 class WorldLoader(Process):
     time_pt_index = 0
     time_pt_cnt = 0
@@ -164,26 +243,6 @@ class WorldLoader(Process):
                 return "ETA %i seconds" % time_left_seconds  # "ETA <1 Minute"
         else:
             return ""
-
-    @staticmethod
-    def is_good_world(cross_section):
-        # - Count blocks
-        # - Diversity of blocks
-        edited_blocks = 0
-        distinct_ids = []
-        width = cross_section.shape[0]
-        height = cross_section.shape[1]
-        for x in range(width):
-            for y in range(height):
-                block = cross_section[x, y]
-                if block != 0:
-                    edited_blocks += 1
-                if block not in distinct_ids:
-                    distinct_ids.append(block)
-
-        total_size = width * height
-        required = int(0.5 * total_size)
-        return edited_blocks >= required and len(distinct_ids) >= 6
 
     @staticmethod
     def is_good_label_world(cross_section):
@@ -223,7 +282,7 @@ class WorldLoader(Process):
             # Random placement along x axis
             displace_x = np.random.randint(0, self.gen_size[0] - world_width + 1)
 
-            world_resized = np.zeros((self.gen_size[0], world_height), dtype=int)
+            world_resized = np.zeros((self.gen_size[0], world_height), dtype=np.int8)
             world_resized[displace_x:displace_x + world_width, :] = world
             world = world_resized
             world_width = self.gen_size[0]
@@ -233,7 +292,7 @@ class WorldLoader(Process):
             # Random placement along y axis
             displace_y = np.random.randint(0, self.gen_size[1] - world_height + 1)
 
-            world_resized = np.zeros((world_width, self.gen_size[1]), dtype=int)
+            world_resized = np.zeros((world_width, self.gen_size[1]), dtype=np.int8)
             world_resized[:, displace_y:displace_y + world_height] = world
             world = world_resized
             world_height = self.gen_size[1]
@@ -259,7 +318,7 @@ class WorldLoader(Process):
                 cross_section0 = cross_section
 
                 if (self.label_dict is not None and self.is_good_label_world(cross_section0)) or \
-                        (self.label_dict is None and self.is_good_world(cross_section0)):
+                        (self.label_dict is None and is_good_world(cross_section0)):
 
                     encoded_world0 = self.encode_func(self.block_forward, cross_section0)
 

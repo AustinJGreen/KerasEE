@@ -561,7 +561,12 @@ def delete_folder(path):
 
 def delete_files_in_path(path):
     delete_folder(path)
-    os.mkdir(path)
+
+    for try_num in range(5):
+        try:
+            os.mkdir(path)
+        except:
+            pass
 
 
 def delete_empty_versions(base_dir, min_files):
