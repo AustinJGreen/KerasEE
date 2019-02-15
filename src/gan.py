@@ -281,8 +281,8 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     # Load Data
     print("Loading worlds...")
     label_dict = utils.load_label_dict(res_dir, 'pro_labels_b')
-    x_all, y_all = load_worlds_with_label(world_count, "%s\\worlds\\" % res_dir, label_dict, 1, (64, 64), block_forward,
-                                          overlap_x=1, overlap_y=1)
+    x_train = load_worlds_with_label(world_count, "%s\\worlds\\" % res_dir, label_dict, 1, (64, 64), block_forward,
+                                     overlap_x=1, overlap_y=1)
 
     # Start Training loop
     world_count = x_train.shape[0]
@@ -393,7 +393,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=64, world_count=30000, initial_epoch=0)
+    train(epochs=100, batch_size=64, world_count=16000, initial_epoch=0)
 
 
 if __name__ == "__main__":
