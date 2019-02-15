@@ -195,9 +195,9 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
 
     world_size = classifier.input_shape[1]
     dpi = 96
-    hpixels = 325 * cols
+    hpixels = 320 * cols
     hfigsize = hpixels / dpi
-    vpixels = 340 * rows
+    vpixels = 330 * rows
     vfigsize = vpixels / dpi
     fig = plt.figure(figsize=(hfigsize, vfigsize), dpi=dpi)
 
@@ -246,13 +246,14 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
             plt.imshow(img)
 
             print("Adding plot %s of %s" % (sample_num + 1, rows * cols))
-            print("Floor is %f, Ceiling is %f" % (pro_score_floor, pro_score_ceiling))
+
 
             sample_num += 1
             if sample_num >= cols * rows:
                 break
 
     print("Saving figure...")
+    fig.tight_layout()
     fig.savefig('%s\\plot.png' % plots_dir, transparent=True)
 
 
@@ -320,7 +321,7 @@ def main():
     # train(epochs=18, batch_size=32, world_count=30000, dict_src_name='pro_labels_b')
     # predict('ver9', dict_src_name='pro_labels_b')
     # add_training_data('pro_labels_b')
-    predict_sample_matlab('ver38', dict_src_name='pro_labels_b', cols=2, rows=2)
+    predict_sample_matlab('ver38', dict_src_name='pro_labels_b', cols=3, rows=3)
     # save_current_labels('pro_labels_b')
 
 
