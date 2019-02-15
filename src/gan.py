@@ -119,6 +119,7 @@ def build_discriminator():
 def generator_containing_discriminator(g, d):
     model = Sequential()
     model.add(g)
+    d.trainable = False
     model.add(d)
     return model
 
@@ -184,17 +185,15 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
     else:
         print("Building model from scratch...")
-        d_optim = Adam(lr=0.00001, beta_1=0.5)
+        d_optim = Adam(lr=0.00001)
         g_optim = Adam(lr=0.0001, beta_1=0.5)
 
         d = build_discriminator()
-
         d.trainable = True
-        d.compile(loss="binary_crossentropy", optimizer=d_optim, metrics=["accuracy"])
+        d.compile(loss='binary_crossentropy', optimizer=d_optim, metrics=["accuracy"])
 
         g = build_generator()
 
-        d.trainable = False
         d_on_g = generator_containing_discriminator(g, d)
         d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
 
@@ -237,6 +236,10 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     x_train = load_worlds_with_label(world_count, "%s\\worlds\\" % res_dir, label_dict, 1, (64, 64), block_forward,
                                      overlap_x=1, overlap_y=1)
 
+    # Save sample
+    utils.save_world_preview(block_images, utils.decode_world_sigmoid(block_backward, x_train[9]),
+                             'C:\\Users\\austi\\Desktop\\test.png')
+
     # Start Training loop
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
@@ -265,8 +268,6 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
             real_labels = np.ones((batch_size, 1))  # np.random.uniform(0.9, 1.1, size=(batch_size,))
             fake_labels = np.zeros((batch_size, 1))  # np.random.uniform(-0.1, 0.1, size=(batch_size,))
-
-            d.trainable = True
 
             # Train discriminator on real worlds
             d_loss = d.train_on_batch(real_worlds, real_labels)
@@ -306,10 +307,8 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             d_loss_summary.value[0].simple_value = d_avg_loss
             tb_writer.add_summary(d_loss_summary, (epoch * number_of_batches) + minibatch_index)
 
-            d.trainable = False
-
             # Training generator on X data, with Y labels
-            noise = np.random.normal(0, 1, (batch_size, 256))
+            # noise = np.random.normal(0, 1, (batch_size, 256))
 
             # Train generator to generate real
             g_loss = d_on_g.train_on_batch(noise, real_labels)
@@ -317,7 +316,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             tb_writer.add_summary(g_loss_summary, (epoch * number_of_batches) + minibatch_index)
             tb_writer.flush()
 
-            print("epoch [%d/%d] :: batch [%d/%d] :: dis_acc = %.1f%% :: dis_loss = %f :: gen_loss = %f" % (
+            print("epoch [%d/%d] :: batch [%d/%d] :: dis_acc = %.1f%% :: dis_loss = %s :: gen_loss = %s" % (
                 epoch, epochs, minibatch_index, number_of_batches, d_avg_acc * 100, d_avg_loss, g_loss))
 
             # Save models
@@ -346,7 +345,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=64, world_count=1000, initial_epoch=0)
+    train(epochs=100, batch_size=100, world_count=5000, initial_epoch=0)
 
 
 if __name__ == "__main__":
