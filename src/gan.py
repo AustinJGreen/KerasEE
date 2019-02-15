@@ -206,10 +206,6 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     x_train = load_worlds_with_label(world_count, '%s\\worlds\\' % res_dir, label_dict, 1, (size, size), block_forward,
                                      overlap_x=1, overlap_y=1)
 
-    # Save sample
-    utils.save_world_preview(block_images, utils.decode_world_sigmoid(block_backward, x_train[9]),
-                             'C:\\Users\\austi\\Desktop\\test.png')
-
     # Start Training loop
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
@@ -317,7 +313,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=100, world_count=1000, initial_epoch=0)
+    train(epochs=100, batch_size=64, world_count=16000, initial_epoch=0)
 
 
 if __name__ == '__main__':
