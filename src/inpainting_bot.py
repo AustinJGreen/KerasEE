@@ -95,7 +95,7 @@ def build_for(r, player_id):
 
 @EventHandler.add('init')
 def on_init(r, init_message):
-    print("Joined.")
+    print('Joined.')
     r.send('init2')
 
     width = init_message[18]
@@ -153,10 +153,10 @@ def on_disconnect(r, disconnect_message):
 
 
 # Connect to the game
-print("Logging in...")
+print('Logging in...')
 username = None
 password = None
-with open("C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\res\\ugp") as fp:
+with open('C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\res\\ugp') as fp:
     line = fp.readline()
     spl = line.split(' ')
     username = spl[0]
@@ -172,21 +172,21 @@ version = client.bigdb_load('config', 'config')['version']
 bot_room = client.create_join_room('PWrO5qmOGjb0I', f'Everybodyedits{version}', True)
 
 # Send a message
-print("Joining world...")
+print('Joining world...')
 bot_room.send('init')
 
 build_queue = []  # (x, y) mask queue for bot
 
 cur_dir = 'C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\'
 
-print("Loading context model...")
+print('Loading context model...')
 contextnet = unet_model.PConvUnet(None, [7, 14, 21], inference_only=True)
 pconv_unet = contextnet.build_pconv_unet(train_bn=False, lr=0.0001)
 pconv_unet.load_weights('%s\\models\\inpainting\\ver8\\models\\epoch3\\unet.weights' % cur_dir)
 graph = tf.get_default_graph()
 
-print("Done loading model.")
+print('Done loading model.')
 init_lock = Lock()
 init_lock.acquire()
-print("Ready...")
+print('Ready...')
 init_lock.acquire()

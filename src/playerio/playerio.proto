@@ -1,7 +1,7 @@
 // PlayerIO Protocol Buffers
 // protoc --python_out=./ playerio.proto && mv playerio_pb2.py _protocol.py 
 
-syntax = "proto3";
+syntax = 'proto3';
 
 
 message SimpleConnectRequest {

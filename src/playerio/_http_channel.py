@@ -23,7 +23,7 @@ class HTTPChannel:
         # Getting the token if it exists
         has_token = ord(response.read(1))
         if has_token:
-            length = struct.unpack(">H", response.read(2))[0]
+            length = struct.unpack('>H', response.read(2))[0]
             self.token = (response.read(length)).decode('utf8')
 
         # Checking the status

@@ -36,7 +36,7 @@ class Room:
         m = message
         if type(message) != Message:
             m = Message(message, *args)
-        print("Sending %s" % m)
+        print('Sending %s' % m)
         self.__socket.send(Serializer.serialize_message(m))
 
     def __broadcast_message(self, message):

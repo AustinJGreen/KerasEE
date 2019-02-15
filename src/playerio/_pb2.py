@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
     package='',
     syntax='proto3',
     serialized_pb=_b(
-        '\n\x0eplayerio.proto\"\xf8\x01\n\x14SimpleConnectRequest\x12\x0f\n\x07game_id\x18\x01 \x01(\t\x12\x19\n\x11username_or_email\x18\x02 \x01(\t\x12\x10\n\x08password\x18\x03 \x01(\t\x12\x1f\n\x17player_insight_segments\x18\x04 \x03(\t\x12\x12\n\nclient_api\x18\x05 \x01(\t\x12:\n\x0b\x63lient_info\x18\x06 \x03(\x0b\x32%.SimpleConnectRequest.ClientInfoEntry\x1a\x31\n\x0f\x43lientInfoEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xb1\x01\n\x13SimpleConnectOutput\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x15\n\rshow_branding\x18\x03 \x01(\x08\x12\x1c\n\x14game_fs_redirect_map\x18\x04 \x01(\t\x12\x12\n\npartner_id\x18\x05 \x01(\t\x12\x31\n\x14player_insight_state\x18\x06 \x01(\x0b\x32\x13.PlayerInsightState\"3\n\x12SimpleConnectError\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x92\x01\n\x12PlayerInsightState\x12\x16\n\x0eplayers_online\x18\x01 \x01(\x05\x12\x33\n\x08segments\x18\x02 \x03(\x0b\x32!.PlayerInsightState.SegmentsEntry\x1a/\n\rSegmentsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xd3\x01\n\x10ListRoomsRequest\x12\x11\n\troom_type\x18\x01 \x01(\t\x12>\n\x0fsearch_criteria\x18\x02 \x03(\x0b\x32%.ListRoomsRequest.SearchCriteriaEntry\x12\r\n\x05limit\x18\x03 \x01(\x05\x12\x0e\n\x06offset\x18\x04 \x01(\x05\x12\x16\n\x0eonly_dev_rooms\x18\x05 \x01(\x08\x1a\x35\n\x13SearchCriteriaEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"+\n\x0fListRoomsOutput\x12\x18\n\x05rooms\x18\x01 \x03(\x0b\x32\t.RoomInfo\"/\n\x0eListRoomsError\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x8c\x01\n\x08RoomInfo\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x16\n\x0eplayers_online\x18\x03 \x01(\x05\x12!\n\x04\x64\x61ta\x18\x04 \x03(\x0b\x32\x13.RoomInfo.DataEntry\x1a+\n\tDataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xb5\x02\n\x15\x43reateJoinRoomRequest\x12\x0f\n\x07room_id\x18\x01 \x01(\t\x12\x11\n\troom_type\x18\x02 \x01(\t\x12\x0f\n\x07visible\x18\x03 \x01(\x08\x12\x37\n\troom_data\x18\x04 \x03(\x0b\x32$.CreateJoinRoomRequest.RoomDataEntry\x12\x37\n\tjoin_data\x18\x05 \x03(\x0b\x32$.CreateJoinRoomRequest.JoinDataEntry\x12\x13\n\x0bis_dev_room\x18\x06 \x01(\x08\x1a/\n\rRoomDataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a/\n\rJoinDataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"X\n\x14\x43reateJoinRoomOutput\x12\n\n\x02id\x18\x01 \x01(\t\x12\x10\n\x08join_key\x18\x02 \x01(\t\x12\"\n\tendpoints\x18\x03 \x03(\x0b\x32\x0f.ServerEndpoint\"4\n\x13\x43reateJoinRoomError\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"/\n\x0eServerEndpoint\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\x18\n\x16LoadMyPlayerObjectArgs\"E\n\x18LoadMyPlayerObjectOutput\x12)\n\rplayer_object\x18\x01 \x01(\x0b\x32\x12.BigDBObjectOutput\"8\n\x17LoadMyPlayerObjectError\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"c\n\x11\x42igDBObjectOutput\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x1f\n\x05items\x18\x03 \x03(\x0b\x32\x10.BigDBObjectItem\x12\x0f\n\x07\x63reator\x18\x04 \x01(\r\"A\n\x0f\x42igDBObjectItem\x12\x0c\n\x04name\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.BigDBObjectValue\"\xef\x01\n\x10\x42igDBObjectValue\x12\x0c\n\x04type\x18\x01 \x01(\x05\x12\x0e\n\x06string\x18\x02 \x01(\t\x12\x0b\n\x03int\x18\x03 \x01(\x05\x12\x0c\n\x04uint\x18\x04 \x01(\r\x12\x0c\n\x04long\x18\x05 \x01(\x03\x12\x0c\n\x04\x62ool\x18\x06 \x01(\x08\x12\r\n\x05\x66loat\x18\x07 \x01(\x02\x12\x0e\n\x06\x64ouble\x18\x08 \x01(\x01\x12\x11\n\tbytearray\x18\t \x01(\x0c\x12\x10\n\x08\x64\x61tetime\x18\n \x01(\x03\x12!\n\x05\x61rray\x18\x0b \x03(\x0b\x32\x12.BigDBArrayElement\x12\x1f\n\x05items\x18\x0c \x03(\x0b\x32\x10.BigDBObjectItem\"D\n\x11\x42igDBArrayElement\x12\r\n\x05index\x18\x01 \x01(\x05\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.BigDBObjectValue\"6\n\x10\x42igDBLoadRequest\x12\"\n\nobject_ids\x18\x01 \x03(\x0b\x32\x0e.BigDBObjectId\"6\n\x0f\x42igDBLoadOutput\x12#\n\x07objects\x18\x01 \x03(\x0b\x32\x12.BigDBObjectOutput\"/\n\x0e\x42igDBLoadError\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\",\n\rBigDBObjectId\x12\r\n\x05table\x18\x01 \x01(\t\x12\x0c\n\x04keys\x18\x02 \x03(\tb\x06proto3')
+        '\n\x0eplayerio.proto\'\xf8\x01\n\x14SimpleConnectRequest\x12\x0f\n\x07game_id\x18\x01 \x01(\t\x12\x19\n\x11username_or_email\x18\x02 \x01(\t\x12\x10\n\x08password\x18\x03 \x01(\t\x12\x1f\n\x17player_insight_segments\x18\x04 \x03(\t\x12\x12\n\nclient_api\x18\x05 \x01(\t\x12:\n\x0b\x63lient_info\x18\x06 \x03(\x0b\x32%.SimpleConnectRequest.ClientInfoEntry\x1a\x31\n\x0f\x43lientInfoEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\'\xb1\x01\n\x13SimpleConnectOutput\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\t\x12\x15\n\rshow_branding\x18\x03 \x01(\x08\x12\x1c\n\x14game_fs_redirect_map\x18\x04 \x01(\t\x12\x12\n\npartner_id\x18\x05 \x01(\t\x12\x31\n\x14player_insight_state\x18\x06 \x01(\x0b\x32\x13.PlayerInsightState\'3\n\x12SimpleConnectError\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\'\x92\x01\n\x12PlayerInsightState\x12\x16\n\x0eplayers_online\x18\x01 \x01(\x05\x12\x33\n\x08segments\x18\x02 \x03(\x0b\x32!.PlayerInsightState.SegmentsEntry\x1a/\n\rSegmentsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\'\xd3\x01\n\x10ListRoomsRequest\x12\x11\n\troom_type\x18\x01 \x01(\t\x12>\n\x0fsearch_criteria\x18\x02 \x03(\x0b\x32%.ListRoomsRequest.SearchCriteriaEntry\x12\r\n\x05limit\x18\x03 \x01(\x05\x12\x0e\n\x06offset\x18\x04 \x01(\x05\x12\x16\n\x0eonly_dev_rooms\x18\x05 \x01(\x08\x1a\x35\n\x13SearchCriteriaEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\'+\n\x0fListRoomsOutput\x12\x18\n\x05rooms\x18\x01 \x03(\x0b\x32\t.RoomInfo\'/\n\x0eListRoomsError\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\'\x8c\x01\n\x08RoomInfo\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x16\n\x0eplayers_online\x18\x03 \x01(\x05\x12!\n\x04\x64\x61ta\x18\x04 \x03(\x0b\x32\x13.RoomInfo.DataEntry\x1a+\n\tDataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\'\xb5\x02\n\x15\x43reateJoinRoomRequest\x12\x0f\n\x07room_id\x18\x01 \x01(\t\x12\x11\n\troom_type\x18\x02 \x01(\t\x12\x0f\n\x07visible\x18\x03 \x01(\x08\x12\x37\n\troom_data\x18\x04 \x03(\x0b\x32$.CreateJoinRoomRequest.RoomDataEntry\x12\x37\n\tjoin_data\x18\x05 \x03(\x0b\x32$.CreateJoinRoomRequest.JoinDataEntry\x12\x13\n\x0bis_dev_room\x18\x06 \x01(\x08\x1a/\n\rRoomDataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\x1a/\n\rJoinDataEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\'X\n\x14\x43reateJoinRoomOutput\x12\n\n\x02id\x18\x01 \x01(\t\x12\x10\n\x08join_key\x18\x02 \x01(\t\x12\'\n\tendpoints\x18\x03 \x03(\x0b\x32\x0f.ServerEndpoint\'4\n\x13\x43reateJoinRoomError\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\'/\n\x0eServerEndpoint\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\x05\'\x18\n\x16LoadMyPlayerObjectArgs\'E\n\x18LoadMyPlayerObjectOutput\x12)\n\rplayer_object\x18\x01 \x01(\x0b\x32\x12.BigDBObjectOutput\'8\n\x17LoadMyPlayerObjectError\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\'c\n\x11\x42igDBObjectOutput\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x1f\n\x05items\x18\x03 \x03(\x0b\x32\x10.BigDBObjectItem\x12\x0f\n\x07\x63reator\x18\x04 \x01(\r\'A\n\x0f\x42igDBObjectItem\x12\x0c\n\x04name\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.BigDBObjectValue\'\xef\x01\n\x10\x42igDBObjectValue\x12\x0c\n\x04type\x18\x01 \x01(\x05\x12\x0e\n\x06string\x18\x02 \x01(\t\x12\x0b\n\x03int\x18\x03 \x01(\x05\x12\x0c\n\x04uint\x18\x04 \x01(\r\x12\x0c\n\x04long\x18\x05 \x01(\x03\x12\x0c\n\x04\x62ool\x18\x06 \x01(\x08\x12\r\n\x05\x66loat\x18\x07 \x01(\x02\x12\x0e\n\x06\x64ouble\x18\x08 \x01(\x01\x12\x11\n\tbytearray\x18\t \x01(\x0c\x12\x10\n\x08\x64\x61tetime\x18\n \x01(\x03\x12!\n\x05\x61rray\x18\x0b \x03(\x0b\x32\x12.BigDBArrayElement\x12\x1f\n\x05items\x18\x0c \x03(\x0b\x32\x10.BigDBObjectItem\'D\n\x11\x42igDBArrayElement\x12\r\n\x05index\x18\x01 \x01(\x05\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.BigDBObjectValue\'6\n\x10\x42igDBLoadRequest\x12\'\n\nobject_ids\x18\x01 \x03(\x0b\x32\x0e.BigDBObjectId\'6\n\x0f\x42igDBLoadOutput\x12#\n\x07objects\x18\x01 \x03(\x0b\x32\x12.BigDBObjectOutput\'/\n\x0e\x42igDBLoadError\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\',\n\rBigDBObjectId\x12\r\n\x05table\x18\x01 \x01(\t\x12\x0c\n\x04keys\x18\x02 \x03(\tb\x06proto3')
 )
 
 _SIMPLECONNECTREQUEST_CLIENTINFOENTRY = _descriptor.Descriptor(
@@ -32,14 +32,14 @@ _SIMPLECONNECTREQUEST_CLIENTINFOENTRY = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='key', full_name='SimpleConnectRequest.ClientInfoEntry.key', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='value', full_name='SimpleConnectRequest.ClientInfoEntry.value', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -69,21 +69,21 @@ _SIMPLECONNECTREQUEST = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='game_id', full_name='SimpleConnectRequest.game_id', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='username_or_email', full_name='SimpleConnectRequest.username_or_email', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='password', full_name='SimpleConnectRequest.password', index=2,
             number=3, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -97,7 +97,7 @@ _SIMPLECONNECTREQUEST = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='client_api', full_name='SimpleConnectRequest.client_api', index=4,
             number=5, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -134,14 +134,14 @@ _SIMPLECONNECTOUTPUT = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='token', full_name='SimpleConnectOutput.token', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='user_id', full_name='SimpleConnectOutput.user_id', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -155,14 +155,14 @@ _SIMPLECONNECTOUTPUT = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='game_fs_redirect_map', full_name='SimpleConnectOutput.game_fs_redirect_map', index=3,
             number=4, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='partner_id', full_name='SimpleConnectOutput.partner_id', index=4,
             number=5, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -206,7 +206,7 @@ _SIMPLECONNECTERROR = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='message', full_name='SimpleConnectError.message', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -236,14 +236,14 @@ _PLAYERINSIGHTSTATE_SEGMENTSENTRY = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='key', full_name='PlayerInsightState.SegmentsEntry.key', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='value', full_name='PlayerInsightState.SegmentsEntry.value', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -310,14 +310,14 @@ _LISTROOMSREQUEST_SEARCHCRITERIAENTRY = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='key', full_name='ListRoomsRequest.SearchCriteriaEntry.key', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='value', full_name='ListRoomsRequest.SearchCriteriaEntry.value', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -347,7 +347,7 @@ _LISTROOMSREQUEST = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='room_type', full_name='ListRoomsRequest.room_type', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -442,7 +442,7 @@ _LISTROOMSERROR = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='message', full_name='ListRoomsError.message', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -472,14 +472,14 @@ _ROOMINFO_DATAENTRY = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='key', full_name='RoomInfo.DataEntry.key', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='value', full_name='RoomInfo.DataEntry.value', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -509,14 +509,14 @@ _ROOMINFO = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='id', full_name='RoomInfo.id', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='type', full_name='RoomInfo.type', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -560,14 +560,14 @@ _CREATEJOINROOMREQUEST_ROOMDATAENTRY = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='key', full_name='CreateJoinRoomRequest.RoomDataEntry.key', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='value', full_name='CreateJoinRoomRequest.RoomDataEntry.value', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -597,14 +597,14 @@ _CREATEJOINROOMREQUEST_JOINDATAENTRY = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='key', full_name='CreateJoinRoomRequest.JoinDataEntry.key', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='value', full_name='CreateJoinRoomRequest.JoinDataEntry.value', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -634,14 +634,14 @@ _CREATEJOINROOMREQUEST = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='room_id', full_name='CreateJoinRoomRequest.room_id', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='room_type', full_name='CreateJoinRoomRequest.room_type', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -699,14 +699,14 @@ _CREATEJOINROOMOUTPUT = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='id', full_name='CreateJoinRoomOutput.id', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='join_key', full_name='CreateJoinRoomOutput.join_key', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -750,7 +750,7 @@ _CREATEJOINROOMERROR = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='message', full_name='CreateJoinRoomError.message', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -780,7 +780,7 @@ _SERVERENDPOINT = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='address', full_name='ServerEndpoint.address', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -877,7 +877,7 @@ _LOADMYPLAYEROBJECTERROR = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='message', full_name='LoadMyPlayerObjectError.message', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -907,14 +907,14 @@ _BIGDBOBJECTOUTPUT = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='key', full_name='BigDBObjectOutput.key', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
         _descriptor.FieldDescriptor(
             name='version', full_name='BigDBObjectOutput.version', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -958,7 +958,7 @@ _BIGDBOBJECTITEM = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='name', full_name='BigDBObjectItem.name', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -1002,7 +1002,7 @@ _BIGDBOBJECTVALUE = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='string', full_name='BigDBObjectValue.string', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -1051,7 +1051,7 @@ _BIGDBOBJECTVALUE = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='bytearray', full_name='BigDBObjectValue.bytearray', index=8,
             number=9, type=12, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b(""),
+            has_default_value=False, default_value=_b(''),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -1206,7 +1206,7 @@ _BIGDBLOADERROR = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='message', full_name='BigDBLoadError.message', index=1,
             number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),
@@ -1236,7 +1236,7 @@ _BIGDBOBJECTID = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='table', full_name='BigDBObjectId.table', index=0,
             number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=_b("").decode('utf-8'),
+            has_default_value=False, default_value=_b('').decode('utf-8'),
             message_type=None, enum_type=None, containing_type=None,
             is_extension=False, extension_scope=None,
             options=None, file=DESCRIPTOR),

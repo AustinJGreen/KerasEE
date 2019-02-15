@@ -96,9 +96,9 @@ def load_worlds(load_count, world_directory, gen_size, block_forward, encode_fun
         world_index = 0
         for thread in range(len(threads)):
             threads[thread].join()
-            print("Thread [%s] joined." % thread)
+            print('Thread [%s] joined.' % thread)
             thread_load_queue = threads[thread].get_worlds()
-            print("Adding Thread [%s] queue." % thread)
+            print('Adding Thread [%s] queue.' % thread)
             while thread_load_queue.qsize() > 0:
                 world_array[world_index] = thread_load_queue.get()
                 world_index += 1
@@ -140,10 +140,10 @@ def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, b
         world_index = 0
         for thread in range(len(threads)):
             threads[thread].join()
-            print("Thread [%s] joined." % thread)
+            print('Thread [%s] joined.' % thread)
             thread_load_queue = threads[thread].get_worlds()
             label_load_queue = threads[thread].get_labels()
-            print("Adding Thread [%s] queue." % thread)
+            print('Adding Thread [%s] queue.' % thread)
             while thread_load_queue.qsize() > 0:
                 world_array[world_index] = thread_load_queue.get()
                 world_labels[world_index] = label_load_queue.get()
@@ -186,9 +186,9 @@ def load_worlds_with_label(load_count, world_directory, label_dict, target_label
         world_index = 0
         for thread in range(len(threads)):
             threads[thread].join()
-            print("Thread [%s] joined." % thread)
+            print('Thread [%s] joined.' % thread)
             thread_load_queue = threads[thread].get_worlds()
-            print("Adding Thread [%s] queue." % thread)
+            print('Adding Thread [%s] queue.' % thread)
             while thread_load_queue.qsize() > 0:
                 world_array[world_index] = thread_load_queue.get()
                 world_index += 1
@@ -226,10 +226,10 @@ def load_worlds_with_files(load_count, world_directory, gen_size, block_forward,
         world_index = 0
         for thread in range(len(threads)):
             threads[thread].join()
-            print("Thread [%s] joined." % thread)
+            print('Thread [%s] joined.' % thread)
             thread_load_queue = threads[thread].get_worlds()
             label_load_queue = threads[thread].get_labels()
-            print("Adding Thread [%s] queue." % thread)
+            print('Adding Thread [%s] queue.' % thread)
             while thread_load_queue.qsize() > 0:
                 world_array[world_index] = thread_load_queue.get()
                 world_files.append(label_load_queue.get())
@@ -279,13 +279,13 @@ class WorldLoader(Process):
             time_left_minutes_frac = time_left - time_left_minutes
             time_left_seconds = math.ceil(time_left_minutes_frac * 60)
             if time_left_minutes > 1:
-                return "ETA %i minutes" % time_left_minutes
+                return 'ETA %i minutes' % time_left_minutes
             elif time_left_minutes == 1:
-                return "ETA 1 minute"
+                return 'ETA 1 minute'
             else:
-                return "ETA %i seconds" % time_left_seconds  # "ETA <1 Minute"
+                return 'ETA %i seconds' % time_left_seconds  # 'ETA <1 Minute'
         else:
-            return ""
+            return ''
 
     @staticmethod
     def is_good_label_world(cross_section):
@@ -421,10 +421,10 @@ class WorldLoader(Process):
             time1 = time.time()
             cnt1 = self.world_counter.value
             time_est_str = self.update_estimate(time_points, time0, time1, cnt0, cnt1)
-            print("Loaded (%s/%s) %s" % (self.world_counter.value, self.target_count, time_est_str))
+            print('Loaded (%s/%s) %s' % (self.world_counter.value, self.target_count, time_est_str))
             if self.world_counter.value >= self.target_count:
                 break
-        print("Done loading.")
+        print('Done loading.')
 
     def get_worlds(self):
         return self.load_queue

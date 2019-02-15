@@ -3,20 +3,20 @@ import numpy as np
 
 def parse(m):
     if m is None:
-        raise Exception("Message cannot be null")
+        raise Exception('Message cannot be null')
 
-    if m.type != "init" and m.type != "reset":
-        raise Exception("Invalid message type")
+    if m.type != 'init' and m.type != 'reset':
+        raise Exception('Invalid message type')
 
     p = 0
     data = []
 
-    while m[p] != "ws":
+    while m[p] != 'ws':
         p += 1
 
     p += 1
 
-    while m[p] != "we":
+    while m[p] != 'we':
         data.append(m[p])
         p += 1
 

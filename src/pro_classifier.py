@@ -51,27 +51,27 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
-    model_dir = utils.check_or_create_local_path("pro_classifier", all_models_dir)
+    model_dir = utils.check_or_create_local_path('pro_classifier', all_models_dir)
 
     utils.delete_empty_versions(model_dir, 1)
     no_version = version_name is None
     if no_version:
         latest = utils.get_latest_version(model_dir)
-        version_name = "ver%s" % (latest + 1)
+        version_name = 'ver%s' % (latest + 1)
 
     version_dir = utils.check_or_create_local_path(version_name, model_dir)
-    graph_dir = utils.check_or_create_local_path("graph", model_dir)
+    graph_dir = utils.check_or_create_local_path('graph', model_dir)
     graph_version_dir = utils.check_or_create_local_path(version_name, graph_dir)
 
-    model_save_dir = utils.check_or_create_local_path("models", version_dir)
+    model_save_dir = utils.check_or_create_local_path('models', version_dir)
 
-    print("Saving source...")
+    print('Saving source...')
     utils.save_source_to_dir(version_dir)
 
-    print("Loading encoding dictionaries...")
+    print('Loading encoding dictionaries...')
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
-    print("Building model from scratch...")
+    print('Building model from scratch...')
     c_optim = Adam(lr=0.0001)
 
     size = 112
@@ -80,12 +80,12 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     # c = build_wide_resnet(input_dim=(size, size, 10), nb_classes=1, N=2, k=1, dropout=0.1)
 
     c.summary()
-    c.compile(loss="binary_crossentropy", optimizer=c_optim, metrics=["accuracy"])
+    c.compile(loss='binary_crossentropy', optimizer=c_optim, metrics=['accuracy'])
 
-    print("Loading labels...")
+    print('Loading labels...')
     label_dict = utils.load_label_dict(res_dir, dict_src_name)
 
-    print("Loading worlds...")
+    print('Loading worlds...')
     x, y_raw = load_worlds_with_labels(world_count, '%s\\worlds\\' % res_dir, label_dict, (size, size),
                                        block_forward)
 
@@ -120,9 +120,9 @@ def predict(network_ver, dict_src_name):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
-    model_dir = utils.check_or_create_local_path("pro_classifier", all_models_dir)
+    model_dir = utils.check_or_create_local_path('pro_classifier', all_models_dir)
     version_dir = utils.check_or_create_local_path(network_ver, model_dir)
-    model_save_dir = utils.check_or_create_local_path("models", version_dir)
+    model_save_dir = utils.check_or_create_local_path('models', version_dir)
 
     classifications_dir = utils.check_or_create_local_path('classifications', model_dir)
     utils.delete_files_in_path(classifications_dir)
@@ -130,13 +130,13 @@ def predict(network_ver, dict_src_name):
     pro_dir = utils.check_or_create_local_path('pro', classifications_dir)
     notpro_dir = utils.check_or_create_local_path('notpro', classifications_dir)
 
-    print("Loading model...")
+    print('Loading model...')
     classifier = load_model('%s\\latest.h5' % model_save_dir)
 
-    print("Loading block images...")
+    print('Loading block images...')
     block_images = utils.load_block_images(res_dir)
 
-    print("Loading encoding dictionaries...")
+    print('Loading encoding dictionaries...')
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     x_data, x_files = load_worlds_with_files(5000, '%s\\worlds\\' % res_dir, (112, 112), block_forward)
@@ -173,20 +173,20 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
-    model_dir = utils.check_or_create_local_path("pro_classifier", all_models_dir)
+    model_dir = utils.check_or_create_local_path('pro_classifier', all_models_dir)
     version_dir = utils.check_or_create_local_path(network_ver, model_dir)
-    model_save_dir = utils.check_or_create_local_path("models", version_dir)
+    model_save_dir = utils.check_or_create_local_path('models', version_dir)
 
     plots_dir = utils.check_or_create_local_path('plots', model_dir)
     utils.delete_files_in_path(plots_dir)
 
-    print("Loading model...")
+    print('Loading model...')
     classifier = load_model('%s\\latest.h5' % model_save_dir)
 
-    print("Loading block images...")
+    print('Loading block images...')
     block_images = utils.load_block_images(res_dir)
 
-    print("Loading encoding dictionaries...")
+    print('Loading encoding dictionaries...')
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     x_labeled = utils.load_label_dict(res_dir, dict_src_name)
@@ -245,13 +245,13 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
             plt.yticks(positions, labels)
             plt.imshow(img)
 
-            print("Adding plot %s of %s" % (sample_num + 1, rows * cols))
+            print('Adding plot %s of %s' % (sample_num + 1, rows * cols))
 
             sample_num += 1
             if sample_num >= cols * rows:
                 break
 
-    print("Saving figure...")
+    print('Saving figure...')
     fig.tight_layout()
     fig.savefig('%s\\plot.png' % plots_dir, transparent=True)
 
@@ -260,7 +260,7 @@ def add_training_data(current_label_dict):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
-    model_dir = utils.check_or_create_local_path("pro_classifier", all_models_dir)
+    model_dir = utils.check_or_create_local_path('pro_classifier', all_models_dir)
     classifications_dir = utils.check_or_create_local_path('classifications', model_dir)
     pro_dir = utils.check_or_create_local_path('pro', classifications_dir)
     notpro_dir = utils.check_or_create_local_path('notpro', classifications_dir)
@@ -287,14 +287,14 @@ def save_current_labels(current_label_dict):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
-    model_dir = utils.check_or_create_local_path("pro_classifier", all_models_dir)
+    model_dir = utils.check_or_create_local_path('pro_classifier', all_models_dir)
     notpro_dir = utils.check_or_create_local_path('notpro', model_dir)
     pro_dir = utils.check_or_create_local_path('pro', model_dir)
 
-    print("Loading block images...")
+    print('Loading block images...')
     block_images = utils.load_block_images(res_dir)
 
-    print("Loading label dict...")
+    print('Loading label dict...')
     x_labeled = utils.load_label_dict(res_dir, current_label_dict)
 
     saved = 0
@@ -314,7 +314,7 @@ def save_current_labels(current_label_dict):
             utils.save_world_preview(block_images, world_data, '%s\\%s.png' % (notpro_dir, x_world))
 
         saved += 1
-        print("Saved %s of %s world previews" % (saved, len(x_labeled)))
+        print('Saved %s of %s world previews' % (saved, len(x_labeled)))
 
 
 def main():
@@ -325,5 +325,5 @@ def main():
     save_current_labels('pro_labels_b')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

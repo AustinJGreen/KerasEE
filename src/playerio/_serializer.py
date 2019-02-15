@@ -64,5 +64,5 @@ class Serializer:
     @staticmethod
     def __encode_value(value):
         if isinstance(value, float):
-            return bytes(struct.pack(">d", value))
-        return bytes(struct.pack(">i", value)).lstrip(b'\x00')
+            return bytes(struct.pack('>d', value))
+        return bytes(struct.pack('>i', value)).lstrip(b'\x00')

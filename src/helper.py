@@ -121,50 +121,50 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
-    model_dir = utils.check_or_create_local_path("helper", all_models_dir)
+    model_dir = utils.check_or_create_local_path('helper', all_models_dir)
 
     utils.delete_empty_versions(model_dir, 1)
 
     no_version = version_name is None
     if no_version:
         latest = utils.get_latest_version(model_dir)
-        version_name = "ver%s" % (latest + 1)
+        version_name = 'ver%s' % (latest + 1)
 
     version_dir = utils.check_or_create_local_path(version_name, model_dir)
-    graph_dir = utils.check_or_create_local_path("graph", model_dir)
+    graph_dir = utils.check_or_create_local_path('graph', model_dir)
     graph_version_dir = utils.check_or_create_local_path(version_name, graph_dir)
 
-    worlds_dir = utils.check_or_create_local_path("worlds", version_dir)
-    previews_dir = utils.check_or_create_local_path("previews", version_dir)
-    model_save_dir = utils.check_or_create_local_path("models", version_dir)
+    worlds_dir = utils.check_or_create_local_path('worlds', version_dir)
+    previews_dir = utils.check_or_create_local_path('previews', version_dir)
+    model_save_dir = utils.check_or_create_local_path('models', version_dir)
 
-    print("Saving source...")
+    print('Saving source...')
     utils.save_source_to_dir(version_dir)
 
     # Load block images
-    print("Loading block images...")
+    print('Loading block images...')
     block_images = utils.load_block_images(res_dir)
 
-    print("Loading encoding dictionaries...")
+    print('Loading encoding dictionaries...')
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     if no_version:
         # Delete existing worlds and previews if any
-        print("Checking for old generated data...")
+        print('Checking for old generated data...')
         utils.delete_files_in_path(worlds_dir)
         utils.delete_files_in_path(previews_dir)
 
     # Load model and existing weights
-    print("Loading models...")
+    print('Loading models...')
 
     judge = build_judge_model(32)
     judge_optimizer = Adam(lr=0.0001)
-    judge.compile(loss="binary_crossentropy", optimizer=judge_optimizer, metrics=['accuracy'])
+    judge.compile(loss='binary_crossentropy', optimizer=judge_optimizer, metrics=['accuracy'])
 
     helper_optimizer = Adam(lr=0.001)
     helper = build_helper_model(32)
     helper_feedback = build_helper_feedback_model(helper, judge, 32)
-    helper_feedback.compile(loss="binary_crossentropy", optimizer=helper_optimizer)
+    helper_feedback.compile(loss='binary_crossentropy', optimizer=helper_optimizer)
 
     # before training init writer (for tensorboard log) / model
     tb_writer = tf.summary.FileWriter(logdir=graph_version_dir)
@@ -184,8 +184,8 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     h_loss_summary.value.add(tag='h_loss', simple_value=None)
 
     # Load Data
-    print("Loading worlds...")
-    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, (32, 32), block_forward)
+    print('Loading worlds...')
+    x_train = load_worlds(world_count, '%s\\worlds\\' % res_dir, (32, 32), block_forward)
 
     # Start Training loop
     world_count = x_train.shape[0]
@@ -193,13 +193,13 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
     for epoch in range(initial_epoch, epochs):
 
-        print("Epoch = %s " % epoch)
+        print('Epoch = %s ' % epoch)
         # Create directories for current epoch
-        cur_worlds_cur = utils.check_or_create_local_path("epoch%s" % epoch, worlds_dir)
-        cur_previews_dir = utils.check_or_create_local_path("epoch%s" % epoch, previews_dir)
-        cur_models_dir = utils.check_or_create_local_path("epoch%s" % epoch, model_save_dir)
+        cur_worlds_cur = utils.check_or_create_local_path('epoch%s' % epoch, worlds_dir)
+        cur_previews_dir = utils.check_or_create_local_path('epoch%s' % epoch, previews_dir)
+        cur_models_dir = utils.check_or_create_local_path('epoch%s' % epoch, model_save_dir)
 
-        print("Shuffling data...")
+        print('Shuffling data...')
         np.random.shuffle(x_train)
 
         for minibatch_index in range(number_of_batches):
@@ -241,7 +241,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             tb_writer.flush()
 
             print(
-                "epoch [%d/%d] :: batch [%d/%d] :: j_fake_loss = %f :: j_fake_acc = %.1f%% :: j_real_loss = %f :: j_real_acc = %.1f%% :: h_loss = %f" % (
+                'epoch [%d/%d] :: batch [%d/%d] :: j_fake_loss = %f :: j_fake_acc = %.1f%% :: j_real_loss = %f :: j_real_acc = %.1f%% :: h_loss = %f' % (
                     epoch, epochs, minibatch_index, number_of_batches, j_fake[0], j_fake[1] * 100, j_real[0],
                     j_real[1] * 100, h_loss))
 
@@ -261,17 +261,17 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
                 # Save models
                 try:
-                    judge.save("%s\\judge.h5" % cur_models_dir)
-                    helper.save("%s\\helper.h5" % cur_models_dir)
-                    judge.save_weights("%s\\judge.weights" % cur_models_dir)
-                    helper.save_weights("%s\\helper.weights" % cur_models_dir)
+                    judge.save('%s\\judge.h5' % cur_models_dir)
+                    helper.save('%s\\helper.h5' % cur_models_dir)
+                    judge.save_weights('%s\\judge.weights' % cur_models_dir)
+                    helper.save_weights('%s\\helper.weights' % cur_models_dir)
                 except ImportError:
-                    print("Failed to save data.")
+                    print('Failed to save data.')
 
 
 def main():
     train(epochs=100, batch_size=50, world_count=20000, initial_epoch=0)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

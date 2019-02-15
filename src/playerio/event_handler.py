@@ -2,7 +2,7 @@ class EventHandler:
     __handlers = {}
 
     def __init__(self):
-        raise NotImplementedError("EventHandler is a static class!")
+        raise NotImplementedError('EventHandler is a static class!')
 
     @staticmethod
     def add(message_type='playerio.message'):
