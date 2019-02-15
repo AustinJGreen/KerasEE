@@ -100,6 +100,7 @@ def convert_labels_binary(raw_labels, epsilon=1e-10):
 
     return soft_labels
 
+
 def random_mask_high(width, height, channels=10):
     """Generates a random irregular mask based off of rectangles"""
     mask = np.zeros((width, height, channels), np.int8)
@@ -561,13 +562,13 @@ def delete_folder(path):
 
 
 def delete_files_in_path(path):
-    delete_folder(path)
-
-    for try_num in range(5):
-        try:
-            os.mkdir(path)
-        except:
-            pass
+    path_filenames = os.listdir(path)
+    for filename in path_filenames:
+        full_path = os.path.join(path, filename)
+        if os.path.isfile(full_path):
+            os.remove(full_path)
+        elif os.path.isdir(full_path):
+            delete_folder(full_path)
 
 
 def delete_empty_versions(base_dir, min_files):

@@ -210,8 +210,8 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
         if world_id not in x_labeled:
 
             # Load world and save preview
-            encoded_regions = load_world(world_file, (world_size, world_size), block_forward, overlap_x=0.5,
-                                         overlap_y=0.5)
+            encoded_regions = load_world(world_file, (world_size, world_size), block_forward, overlap_x=1,
+                                         overlap_y=1)
             if len(encoded_regions) == 0:
                 continue
 
@@ -246,7 +246,6 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
             plt.imshow(img)
 
             print("Adding plot %s of %s" % (sample_num + 1, rows * cols))
-
 
             sample_num += 1
             if sample_num >= cols * rows:

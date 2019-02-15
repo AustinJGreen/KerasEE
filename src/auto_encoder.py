@@ -2,6 +2,8 @@ import math
 import os
 
 import keras
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
@@ -12,7 +14,7 @@ from keras.models import Sequential, load_model
 from keras.optimizers import Adam
 
 import utils
-from loadworker import load_worlds
+from loadworker import load_worlds, load_world
 
 
 def autoencoder_model(size):
@@ -198,8 +200,97 @@ def train(epochs, batch_size, world_count, version_name=None):
                     print("Failed to save data.")
 
 
+def predict_sample_matlab(network_ver, samples):
+    cur_dir = os.getcwd()
+    res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
+    all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
+    model_dir = utils.check_or_create_local_path("auto_encoder", all_models_dir)
+    version_dir = utils.check_or_create_local_path(network_ver, model_dir)
+    model_save_dir = utils.check_or_create_local_path("models", version_dir)
+
+    plots_dir = utils.check_or_create_local_path('plots', model_dir)
+    utils.delete_files_in_path(plots_dir)
+
+    print("Loading model...")
+    latest_epoch = utils.get_latest_epoch(model_save_dir)
+    auto_encoder = load_model('%s\\epoch%s\\autoencoder.h5' % (model_save_dir, latest_epoch))
+
+    print("Loading block images...")
+    block_images = utils.load_block_images(res_dir)
+
+    print("Loading encoding dictionaries...")
+    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
+
+    x_worlds = os.listdir('%s\\worlds\\' % res_dir)
+    np.random.shuffle(x_worlds)
+
+    world_size = auto_encoder.input_shape[1]
+    dpi = 96
+    rows = samples
+    cols = 2
+    hpixels = 520 * cols
+    hfigsize = hpixels / dpi
+    vpixels = 530 * rows
+    vfigsize = vpixels / dpi
+    fig = plt.figure(figsize=(hfigsize, vfigsize), dpi=dpi)
+
+    def set_ticks():
+        no_labels = 2  # how many labels to see on axis x
+        step = (16 * world_size) / (no_labels - 1)  # step between consecutive labels
+        positions = np.arange(0, (16 * world_size) + 1, step)  # pixel count at label position
+        labels = positions // 16
+        plt.xticks(positions, labels)
+        plt.yticks(positions, labels)
+
+    sample_num = 0
+    for world_filename in x_worlds:
+        world_file = os.path.join('%s\\worlds\\' % res_dir, world_filename)
+        world_id = utils.get_world_id(world_filename)
+
+        # Load world and save preview
+        encoded_regions = load_world(world_file, (world_size, world_size), block_forward)
+        if len(encoded_regions) == 0:
+            continue
+
+        # Create prediction
+        batch_input = np.zeros((1, world_size, world_size, 10), dtype=np.int8)
+        batch_input[0] = encoded_regions[0]
+        encoded_world = auto_encoder.predict(batch_input)
+
+        before = utils.decode_world_sigmoid(block_backward, encoded_regions[0])
+        utils.save_world_preview(block_images, before, '%s\\before%s.png' % (plots_dir, sample_num))
+
+        after = utils.decode_world_sigmoid(block_backward, encoded_world[0])
+        utils.save_world_preview(block_images, after, '%s\\after%s.png' % (plots_dir, sample_num))
+
+        # Create before plot
+        before_img = mpimg.imread('%s\\before%s.png' % (plots_dir, sample_num))
+        encoded_subplt = fig.add_subplot(rows, cols, sample_num + 1)
+        encoded_subplt.set_title('%s\nActual' % world_id)
+        set_ticks()
+        plt.imshow(before_img)
+
+        # Create after plot
+        after_img = mpimg.imread('%s\\after%s.png' % (plots_dir, sample_num))
+        encoded_subplt = fig.add_subplot(rows, cols, sample_num + 2)
+        encoded_subplt.set_title('%s\nEncoded' % world_id)
+        set_ticks()
+        plt.imshow(after_img)
+
+        print("Added plot %i of %s" % ((sample_num / 2) + 1, samples))
+
+        sample_num += 2
+        if sample_num >= rows * cols:
+            break
+
+    print("Saving figure...")
+    fig.tight_layout()
+    fig.savefig('%s\\plot.png' % plots_dir, transparent=True)
+
+
 def main():
-    train(epochs=100, batch_size=32, world_count=30000, version_name='ver17')
+    # train(epochs=100, batch_size=32, world_count=30000, version_name='ver17')
+    predict_sample_matlab('ver17', samples=4)
 
 
 if __name__ == "__main__":
