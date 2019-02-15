@@ -518,6 +518,7 @@ def save_world_minimap3d(minimap, world_data, name):
 
 def save_world_preview(block_images, world_data, name):
     if os.path.exists(name):
+        print("%s already exists, skipping." % name)
         return
 
     try:

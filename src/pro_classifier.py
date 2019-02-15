@@ -28,11 +28,11 @@ def build_classifier(size):
         else:
             model.add(Conv2D(filters=f, kernel_size=7, strides=1, padding='same'))
 
-        model.add(BatchNormalization(momentum=0.8))
+        model.add(BatchNormalization(momentum=0.8, axis=3))
         model.add(Activation('relu'))
 
         model.add(Conv2D(filters=f, kernel_size=3, strides=1, padding='same'))
-        model.add(BatchNormalization(momentum=0.8))
+        model.add(BatchNormalization(momentum=0.8, axis=3))
         model.add(Activation('relu'))
 
         model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -96,12 +96,6 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
                                                      save_best_only=True, save_weights_only=False, mode='max',
                                                      period=1)
 
-    # Create callback for automatically saving best model based on highest validation accuracy
-    check_best_val_acc = keras.callbacks.ModelCheckpoint('%s\\best_val_acc.h5' % model_save_dir, monitor='val_acc',
-                                                         verbose=0,
-                                                         save_best_only=True, save_weights_only=False, mode='max',
-                                                         period=1)
-
     # Create callback for automatically saving lastest model so training can be resumed. Saves every epoch
     latest_h5_callback = keras.callbacks.ModelCheckpoint('%s\\latest.h5' % model_save_dir, verbose=0,
                                                          save_best_only=False,
@@ -116,10 +110,10 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     tb_callback = keras.callbacks.TensorBoard(log_dir=graph_version_dir, batch_size=batch_size, write_graph=False,
                                               write_grads=True)
 
-    callback_list = [check_best_acc, latest_h5_callback, latest_weights_callback, tb_callback, check_best_val_acc]
+    callback_list = [check_best_acc, latest_h5_callback, latest_weights_callback, tb_callback]
 
     # Train model
-    c.fit(x, y, batch_size, epochs, initial_epoch=initial_epoch, callbacks=callback_list, validation_split=0.2)
+    c.fit(x, y, batch_size, epochs, initial_epoch=initial_epoch, callbacks=callback_list, validation_split=0)
 
 
 def predict(network_ver, dict_src_name):
@@ -199,7 +193,7 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
     x_worlds = os.listdir('%s\\worlds\\' % res_dir)
     np.random.shuffle(x_worlds)
 
-    world_size = 112
+    world_size = classifier.input_shape[1]
     dpi = 96
     hpixels = 400 * cols
     hfigsize = hpixels / dpi
@@ -221,9 +215,6 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
             if len(encoded_regions) == 0:
                 continue
 
-            decoded_region = utils.decode_world_sigmoid(block_backward, encoded_regions[0])
-            utils.save_world_preview(block_images, decoded_region, '%s\\preview%s.png' % (plots_dir, sample_num))
-
             # Create prediction
             batch_input = np.zeros((1, world_size, world_size, 10), dtype=np.int8)
             batch_input[0] = encoded_regions[0]
@@ -232,6 +223,9 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
 
             if pro_score < pro_score_floor or pro_score > pro_score_ceiling:
                 continue
+
+            decoded_region = utils.decode_world_sigmoid(block_backward, encoded_regions[0])
+            utils.save_world_preview(block_images, decoded_region, '%s\\preview%s.png' % (plots_dir, sample_num))
 
             pro_score_floor += 1.0 / (rows * cols)
             pro_score_ceiling += 1.0 / (rows * cols)
@@ -323,10 +317,10 @@ def save_current_labels(current_label_dict):
 
 
 def main():
-    train(epochs=50, batch_size=32, world_count=30000, dict_src_name='pro_labels_b')
+    # train(epochs=18, batch_size=32, world_count=30000, dict_src_name='pro_labels_b')
     # predict('ver9', dict_src_name='pro_labels_b')
     # add_training_data('pro_labels_b')
-    # predict_sample_matlab('ver9', dict_src_name='pro_labels_b', cols=2, rows=2)
+    predict_sample_matlab('ver38', dict_src_name='pro_labels_b', cols=2, rows=2)
     # save_current_labels('pro_labels_b')
 
 
