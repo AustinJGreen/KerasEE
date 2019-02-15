@@ -283,9 +283,9 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             tb_writer.flush()
 
             print('epoch [%d/%d] :: batch [%d/%d] :: fake_acc = %.1f%% :: real_acc = %.1f%% :: ' \
-                  'acc = %.1f%% :: dis_loss = %s :: gen_loss = %s' % (
+                  'fake_loss = %s :: real_loss = %s :: gen_loss = %s' % (
                       epoch, epochs, minibatch_index, number_of_batches, d_fake_acc * 100, d_real_acc * 100,
-                      d_avg_acc * 100, d_avg_loss, g_loss))
+                      d_fake_loss, d_real_loss, g_loss))
 
             # Save models
             time_since_save = time.time() - last_save_time
