@@ -302,6 +302,7 @@ def save_current_labels(current_label_dict):
         label = x_labeled[x_world]
 
         if os.path.exists('%s\\%s.png' % (pro_dir, x_world)) or os.path.exists('%s\\%s.png' % (notpro_dir, x_world)):
+            saved += 1
             continue
 
         world_file = '%s\\worlds\\%s.world' % (res_dir, x_world)
@@ -320,8 +321,8 @@ def main():
     # train(epochs=18, batch_size=32, world_count=30000, dict_src_name='pro_labels_b')
     # predict('ver9', dict_src_name='pro_labels_b')
     # add_training_data('pro_labels_b')
-    predict_sample_matlab('ver38', dict_src_name='pro_labels_b', cols=3, rows=3)
-    # save_current_labels('pro_labels_b')
+    # predict_sample_matlab('ver38', dict_src_name='pro_labels_b', cols=3, rows=3)
+    save_current_labels('pro_labels_b')
 
 
 if __name__ == "__main__":

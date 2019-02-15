@@ -89,7 +89,7 @@ def load_worlds(load_count, world_directory, gen_size, block_forward, encode_fun
         threads = []
         for thread in range(thread_count):
             load_thread = WorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_size,
-                                      block_forward, encode_func, None, overlap_x, overlap_y)
+                                      block_forward, encode_func, None, overlap_x, overlap_y, None)
             load_thread.start()
             threads.append(load_thread)
 
@@ -133,7 +133,7 @@ def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, b
         threads = []
         for thread in range(thread_count):
             load_thread = WorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_size,
-                                      block_forward, encode_func, label_dict, overlap_x, overlap_y)
+                                      block_forward, encode_func, label_dict, overlap_x, overlap_y, None)
             load_thread.start()
             threads.append(load_thread)
 
@@ -152,6 +152,49 @@ def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, b
         world_array = world_array[:world_index, :, :, :]
         world_labels = world_labels[:world_index, :]
     return world_array, world_labels
+
+
+def load_worlds_with_label(load_count, world_directory, label_dict, target_label, gen_size, block_forward,
+                           encode_func=utils.encode_world_sigmoid, overlap_x=1,
+                           overlap_y=1):
+    thread_count = cpu_count() - 1
+
+    with Manager() as manager:
+        file_queue = manager.Queue()
+
+        dict_keys = []
+        for world_id in label_dict.keys():
+            dict_keys.append('%s\\%s.world' % (world_directory, world_id))
+
+        # Shuffle keys
+        random.shuffle(dict_keys)
+        for key in dict_keys:
+            file_queue.put(key)
+
+        world_array = np.zeros((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
+
+        world_counter = Value('i', 0)
+        thread_lock = Lock()
+
+        threads = []
+        for thread in range(thread_count):
+            load_thread = WorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_size,
+                                      block_forward, encode_func, label_dict, overlap_x, overlap_y, target_label)
+            load_thread.start()
+            threads.append(load_thread)
+
+        world_index = 0
+        for thread in range(len(threads)):
+            threads[thread].join()
+            print("Thread [%s] joined." % thread)
+            thread_load_queue = threads[thread].get_worlds()
+            print("Adding Thread [%s] queue." % thread)
+            while thread_load_queue.qsize() > 0:
+                world_array[world_index] = thread_load_queue.get()
+                world_index += 1
+
+        world_array = world_array[:world_index, :, :, :]
+    return world_array
 
 
 def load_worlds_with_files(load_count, world_directory, gen_size, block_forward, encode_func=utils.encode_world_sigmoid,
@@ -232,7 +275,7 @@ class WorldLoader(Process):
         if self.time_pt_cnt > 0:
             time_left_sec = np.average(time_points[0:self.time_pt_cnt]) * worlds_left
             time_left = time_left_sec / 60.0
-            time_left_minutes = int(time_left)
+            time_left_minutes = int(math.ceil(time_left))
             time_left_minutes_frac = time_left - time_left_minutes
             time_left_seconds = math.ceil(time_left_minutes_frac * 60)
             if time_left_minutes > 1:
@@ -273,6 +316,9 @@ class WorldLoader(Process):
             world_id = utils.get_world_id(world_file)
             if world_id in self.label_dict:
                 label = self.label_dict[world_id]
+                if self.label_target is not None and label != self.label_target:
+                    # Label does not match label_target
+                    return
             else:
                 # No label for world, return
                 return
@@ -348,7 +394,7 @@ class WorldLoader(Process):
             x_start += np.random.randint(x_min_increment, self.gen_size[0] + 1)
 
     def __init__(self, file_queue, thread_manager, world_counter, thread_lock, target_count, gen_size,
-                 block_forward, encode_func, label_dict, overlap_x=1, overlap_y=1):
+                 block_forward, encode_func, label_dict, overlap_x=1, overlap_y=1, label_target=None):
         Process.__init__(self)
         self.file_queue = file_queue
         self.load_queue = thread_manager.Queue()
@@ -360,6 +406,7 @@ class WorldLoader(Process):
         self.block_forward = block_forward
         self.encode_func = encode_func
         self.label_dict = label_dict
+        self.label_target = label_target
         self.overlap_x = overlap_x
         self.overlap_y = overlap_y
         self.daemon = True

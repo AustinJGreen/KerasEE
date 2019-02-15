@@ -15,7 +15,7 @@ from keras.models import Sequential, load_model
 from keras.optimizers import Adam
 
 import utils
-from loadworker import load_worlds
+from loadworker import load_worlds_with_label
 
 
 def build_generator():
@@ -60,8 +60,6 @@ def build_generator():
 
     model.add(Conv2DTranspose(10, kernel_size=5, strides=1, padding="same"))
     model.add(Activation('sigmoid'))
-
-    model.trainable = True
     return model
 
 
@@ -112,8 +110,6 @@ def build_discriminator():
 
     model.add(Dense(256, activation='relu'))
     model.add(Dense(1, activation="sigmoid"))
-
-    model.trainable = True
     return model
 
 
@@ -126,7 +122,6 @@ def generator_containing_discriminator(g, d):
 
 
 def improved_loss(generator, discriminator):
-
     def l1(y_true, y_pred):
         """Calculate the L1 loss used in all loss calculations"""
         if K.ndim(y_true) == 4:
@@ -222,7 +217,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         else:
             g_optim = Adam(lr=0.0001, beta_1=0.5)
             d_on_g = generator_containing_discriminator(g, d)
-            d_on_g.compile(loss=improved_loss(g, d), optimizer=g_optim)
+            d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
     elif os.path.exists("%s\\discriminator.weights" % cur_models) and os.path.exists(
             "%s\\generator.weights" % cur_models):
         print("Building model with weights...")
@@ -236,7 +231,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
         g_optim = Adam(lr=0.0001, beta_1=0.5)
         d_on_g = generator_containing_discriminator(g, d)
-        d_on_g.compile(loss=improved_loss(g, d), optimizer=g_optim)
+        d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
     else:
         print("Building model from scratch...")
         d_optim = Adam(lr=0.00001, beta_1=0.5)
@@ -248,7 +243,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         g = build_generator()
         d_on_g = generator_containing_discriminator(g, d)
 
-        d_on_g.compile(loss=improved_loss(g, d), optimizer=g_optim)
+        d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
 
     if no_version:
         # Delete existing worlds and previews if any
@@ -285,7 +280,9 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
     # Load Data
     print("Loading worlds...")
-    x_train = load_worlds(world_count, "%s\\worlds\\" % res_dir, (64, 64), block_forward)
+    label_dict = utils.load_label_dict(res_dir, 'pro_labels_b')
+    x_all, y_all = load_worlds_with_label(world_count, "%s\\worlds\\" % res_dir, label_dict, 1, (64, 64), block_forward,
+                                          overlap_x=1, overlap_y=1)
 
     # Start Training loop
     world_count = x_train.shape[0]
@@ -396,7 +393,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=100, world_count=100000, initial_epoch=0)
+    train(epochs=100, batch_size=64, world_count=30000, initial_epoch=0)
 
 
 if __name__ == "__main__":
