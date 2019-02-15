@@ -17,7 +17,7 @@ Worlds with stairs, basic minigames, and the like are not considered pro. Howeve
 a variety of well built and liked worlds by the community which include pure art levels, pure frustrations, and the
 classics. Figure 1 shows a classification done on a sample of unlabeled worlds.
 <p align="center">
-  <img src="https://github.com/ajosg/KerasEE/blob/master/plots/pro_plot.png?raw=true" alt="Whoops, plot is missing."/>
+  <img src="https://github.com/ajosg/KerasEE/blob/master/plots/pro_plot3x3.png?raw=true" alt="Whoops, plot is missing."/>
   Figure 1
 </p>
 
