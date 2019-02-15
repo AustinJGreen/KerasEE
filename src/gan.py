@@ -2,7 +2,6 @@ import os
 import time
 
 import keras
-import keras.backend as K
 import numpy as np
 import tensorflow as tf
 from keras.layers import Dense, Reshape
@@ -60,6 +59,8 @@ def build_generator():
 
     model.add(Conv2DTranspose(10, kernel_size=5, strides=1, padding="same"))
     model.add(Activation('sigmoid'))
+
+    model.trainable = True
     return model
 
 
@@ -110,67 +111,16 @@ def build_discriminator():
 
     model.add(Dense(256, activation='relu'))
     model.add(Dense(1, activation="sigmoid"))
+
+    model.trainable = True
     return model
 
 
 def generator_containing_discriminator(g, d):
     model = Sequential()
     model.add(g)
-    d.trainable = False
     model.add(d)
     return model
-
-
-def improved_loss(generator, discriminator):
-    def l1(y_true, y_pred):
-        """Calculate the L1 loss used in all loss calculations"""
-        if K.ndim(y_true) == 4:
-            return K.sum(K.abs(y_pred - y_true), axis=[1, 2, 3])
-        elif K.ndim(y_true) == 3:
-            return K.sum(K.abs(y_pred - y_true), axis=[1, 2])
-        else:
-            raise NotImplementedError("Calculating L1 loss on 1D tensors? should not occur for this network")
-
-    def gram_matrix(x):
-        """Calculate gram matrix used in style loss"""
-
-        # Assertions on input
-        assert K.ndim(x) == 4, 'Input tensor should be a 4d (B, H, W, C) tensor'
-        assert K.image_data_format() == 'channels_last', "Please use channels-last format"
-
-        # Permute channels and get resulting shape
-        x = K.permute_dimensions(x, (0, 3, 1, 2))
-        shape = K.shape(x)
-        b, c, h, w = shape[0], shape[1], shape[2], shape[3]
-
-        # Reshape x and do batch dot product
-        features = K.reshape(x, K.stack([b, c, h * w]))
-        gram = K.batch_dot(features, features, axes=2)
-
-        # Normalize with channels, height and width
-        gram = gram / K.cast(c * h * w, x.dtype)
-
-        return gram
-
-    def loss_style(arg1, arg2):
-        """Style loss based on output/computation, used for both eq. 4 & 5 in paper"""
-        style_loss = 0
-        for o, g in zip(arg1, arg2):
-            style_loss += l1(gram_matrix(o), gram_matrix(g))
-        return style_loss
-
-    def loss(y_true, y_pred):
-
-        binary_crossentropy = K.mean(K.binary_crossentropy(y_true, y_pred), axis=-1)
-
-        d_true_features = d_feature_model(y_true)
-        g_pred_features = g_feature_model(y_pred)
-
-        feature_loss = loss_style(d_true_features, g_pred_features)
-
-        return feature_loss + binary_crossentropy
-
-    return loss
 
 
 def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
@@ -238,11 +188,14 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         g_optim = Adam(lr=0.0001, beta_1=0.5)
 
         d = build_discriminator()
+
+        d.trainable = True
         d.compile(loss="binary_crossentropy", optimizer=d_optim, metrics=["accuracy"])
 
         g = build_generator()
-        d_on_g = generator_containing_discriminator(g, d)
 
+        d.trainable = False
+        d_on_g = generator_containing_discriminator(g, d)
         d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
 
     if no_version:
@@ -393,7 +346,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=64, world_count=16000, initial_epoch=0)
+    train(epochs=100, batch_size=64, world_count=1000, initial_epoch=0)
 
 
 if __name__ == "__main__":

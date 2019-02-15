@@ -276,7 +276,7 @@ class WorldLoader(Process):
             time_left_sec = np.average(time_points[0:self.time_pt_cnt]) * worlds_left
             time_left = time_left_sec / 60.0
             time_left_minutes = int(math.ceil(time_left))
-            time_left_minutes_frac = time_left - time_left_minutes
+            time_left_minutes_frac = time_left - int(time_left)
             time_left_seconds = math.ceil(time_left_minutes_frac * 60)
             if time_left_minutes > 1:
                 return "ETA %i minutes" % time_left_minutes
