@@ -195,9 +195,9 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
 
     world_size = classifier.input_shape[1]
     dpi = 96
-    hpixels = 400 * cols
+    hpixels = 325 * cols
     hfigsize = hpixels / dpi
-    vpixels = 450 * rows
+    vpixels = 340 * rows
     vfigsize = vpixels / dpi
     fig = plt.figure(figsize=(hfigsize, vfigsize), dpi=dpi)
 

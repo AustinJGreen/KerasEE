@@ -16,10 +16,9 @@ experience who balance worlds with art and playability and most importantly orig
 Worlds with stairs, basic minigames, and the like are not considered pro. However, the classifier was trained based upon
 a variety of well built and liked worlds by the community which include pure art levels, pure frustrations, and the
 classics. 
-
-Here's a sample:
-![F... something is wrong, there is supposed to me an image here](https://github.com/ajosg/KerasEE/blob/master/plots/pro_plot.png)
-
+<p align="center">
+  <img src="https://github.com/ajosg/KerasEE/blob/master/plots/pro_plot.png?raw=true" alt="Whoops, plot is missing."/>
+</p>
 
 ## World Generater
 One of the more challenging prospects I've had in mind is to be able to generate seemingly good small portions of worlds.
