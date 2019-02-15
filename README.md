@@ -5,7 +5,6 @@ its potential to create interesting things.
 ## World Auto Encoder
 One part of this project is aimed towards training an auto encoder. This model is useful for other models as the auto
 encoder learns features of worlds quite well. Figure 1 shows a sample of encoded worlds.
-
 <p align="center">
   <img src="https://github.com/ajosg/KerasEE/blob/master/plots/ae_plot.png?raw=true" alt="Whoops, plot is missing."/>
   Figure 1: 4 worlds encoded using a trained auto encoder at a resolution of 112x112.
