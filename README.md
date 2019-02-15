@@ -18,7 +18,7 @@ a variety of well built and liked worlds by the community which include pure art
 classics. 
 
 Here's a sample:
-[[https://github.com/ajosg/KerasEE/blob/master/plots/pro_plot.png|alt=octocat]]
+![F... something is wrong, there is supposed to me an image here](https://github.com/ajosg/KerasEE/blob/master/plots/pro_plot.png)
 
 
 ## World Generater
