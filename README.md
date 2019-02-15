@@ -16,7 +16,7 @@ In everybodyedits there are a variety of different worlds. Using labeled data I'
 variety of genres. 
 
 ### Pro Classifier
-First classifier I trained was a "Pro" classifer. This was trained based upon worlds built by builders with lots of
+First classifier I trained was a "Pro" classifier. This was trained based upon worlds built by builders with lots of
 experience who balance worlds with art and playability and most importantly originality. Yes this is highly subjective.
 Worlds with stairs, basic minigames, and the like are not considered pro. However, the classifier was trained based upon
 a variety of well built and liked worlds by the community which include pure art levels, pure frustrations, and the
@@ -26,7 +26,7 @@ classics. Figure 2 shows a classification done on a sample of unlabeled worlds.
   Figure 2: 9 samples with varying confidence levels for a "pro" level.
 </p>
 
-## World Generater
+## World Generator
 One of the more challenging prospects I've had in mind is to be able to generate seemingly good small portions of worlds.
 As of the current state of the project, I've been generating samples up to 64x64 in size. In order to generate worlds
 even close to a regular 200x200 world like 256x256 or even 128x128 I would need more memory on my machine. 
