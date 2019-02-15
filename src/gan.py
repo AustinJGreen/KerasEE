@@ -20,13 +20,18 @@ from loadworker import load_worlds_with_label
 def build_generator(size):
     model = Sequential(name='generator')
 
-    model.add(Dense(input_dim=256, units=4 * 4 * 512))
+    # Calculate starting kernel size
+    n = size
+    while n > 7:
+        n = n // 2
+
+    s = n
+    f = 512
+
+    model.add(Dense(input_dim=256, units=n * n * f))
     model.add(LeakyReLU())
 
-    model.add(Reshape((4, 4, 512)))
-
-    s = 4
-    f = 512
+    model.add(Reshape((n, n, f)))
 
     while s < size:
         model.add(Conv2DTranspose(f, kernel_size=5, strides=1, padding='same'))
@@ -120,7 +125,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print('Loading model...')
 
     # Try to load full model, otherwise try to load weights
-    size = 112
+    size = 64
     cur_models = '%s\\epoch%s' % (model_save_dir, initial_epoch - 1)
     if os.path.exists('%s\\discriminator.h5' % cur_models) and os.path.exists('%s\\generator.h5' % cur_models):
         print('Building model from files...')
@@ -198,7 +203,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     # Load Data
     print('Loading worlds...')
     label_dict = utils.load_label_dict(res_dir, 'pro_labels_b')
-    x_train = load_worlds_with_label(world_count, '%s\\worlds\\' % res_dir, label_dict, 1, (64, 64), block_forward,
+    x_train = load_worlds_with_label(world_count, '%s\\worlds\\' % res_dir, label_dict, 1, (size, size), block_forward,
                                      overlap_x=1, overlap_y=1)
 
     # Save sample
