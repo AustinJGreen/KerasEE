@@ -243,7 +243,7 @@ def encode_world_sigmoid(block_forward, world_data):
     width = world_data.shape[0]
     height = world_data.shape[1]
     bits = 10
-    world_copy = np.zeros((width, height, bits), dtype=np.int8)
+    world_copy = np.zeros((width, height, bits), dtype=float)
 
     if len(world_data.shape) == 2:
         for y in range(height):

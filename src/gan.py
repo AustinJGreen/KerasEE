@@ -7,9 +7,9 @@ import tensorflow as tf
 from keras.layers import Dense, Reshape
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
-from keras.layers.core import Activation, Flatten
+from keras.layers.core import Activation, SpatialDropout2D
 from keras.layers.normalization import BatchNormalization
-from keras.layers.pooling import MaxPooling2D
+from keras.layers.pooling import MaxPooling2D, GlobalAveragePooling2D
 from keras.models import Sequential, load_model
 from keras.optimizers import Adam
 
@@ -17,7 +17,7 @@ import utils
 from loadworker import load_worlds_with_label
 
 
-def build_generator():
+def build_generator(size):
     model = Sequential(name='generator')
 
     model.add(Dense(input_dim=256, units=4 * 4 * 512))
@@ -25,91 +25,54 @@ def build_generator():
 
     model.add(Reshape((4, 4, 512)))
 
-    model.add(Conv2DTranspose(512, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
+    s = 4
+    f = 512
 
-    model.add(Conv2DTranspose(512, kernel_size=3, strides=2, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
+    while s < size:
+        model.add(Conv2DTranspose(f, kernel_size=5, strides=1, padding='same'))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(LeakyReLU())
 
-    model.add(Conv2DTranspose(256, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
+        model.add(Conv2DTranspose(f, kernel_size=3, strides=2, padding='same'))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(LeakyReLU())
 
-    model.add(Conv2DTranspose(256, kernel_size=3, strides=2, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
-
-    model.add(Conv2DTranspose(128, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
-
-    model.add(Conv2DTranspose(128, kernel_size=3, strides=2, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
-
-    model.add(Conv2DTranspose(64, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
-
-    model.add(Conv2DTranspose(64, kernel_size=3, strides=2, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
+        s = s * 2
+        f = f // 2
 
     model.add(Conv2DTranspose(10, kernel_size=5, strides=1, padding='same'))
     model.add(Activation('sigmoid'))
 
-    model.trainable = True
     return model
 
 
-def build_discriminator():
+def build_discriminator(size):
     model = Sequential(name='discriminator')
 
-    model.add(Conv2D(64, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
+    f = 64
+    s = size
 
-    model.add(Conv2D(64, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
+    while s > 7:
+        if s == size:
+            model.add(Conv2D(filters=f, kernel_size=7, strides=1, padding='same', input_shape=(size, size, 10)))
+        else:
+            model.add(Conv2D(filters=f, kernel_size=7, strides=1, padding='same'))
 
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(BatchNormalization(momentum=0.8, axis=3))
+        model.add(Activation('relu'))
 
-    model.add(Conv2D(128, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
+        model.add(Conv2D(filters=f, kernel_size=3, strides=1, padding='same'))
+        model.add(BatchNormalization(momentum=0.8, axis=3))
+        model.add(Activation('relu'))
 
-    model.add(Conv2D(128, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
+        model.add(MaxPooling2D(pool_size=(2, 2)))
+        model.add(SpatialDropout2D(0.2))
 
-    model.add(MaxPooling2D(pool_size=(2, 2)))
+        f = f * 2
+        s = s // 2
 
-    model.add(Conv2D(256, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
+    model.add(GlobalAveragePooling2D())
 
-    model.add(Conv2D(256, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
-
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-
-    model.add(Conv2D(512, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
-
-    model.add(Conv2D(512, kernel_size=5, strides=1, padding='same'))
-    model.add(BatchNormalization(momentum=0.8))
-    model.add(LeakyReLU())
-
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-
-    model.add(Flatten())
-
-    model.add(Dense(256, activation='relu'))
     model.add(Dense(1, activation='sigmoid'))
 
     model.trainable = True
@@ -157,6 +120,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print('Loading model...')
 
     # Try to load full model, otherwise try to load weights
+    size = 112
     cur_models = '%s\\epoch%s' % (model_save_dir, initial_epoch - 1)
     if os.path.exists('%s\\discriminator.h5' % cur_models) and os.path.exists('%s\\generator.h5' % cur_models):
         print('Building model from files...')
@@ -173,11 +137,11 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             '%s\\generator.weights' % cur_models):
         print('Building model with weights...')
         d_optim = Adam(lr=0.00001)
-        d = build_discriminator()
+        d = build_discriminator(size)
         d.load_weights('%s\\discriminator.weights' % cur_models)
         d.compile(loss='binary_crossentropy', optimizer=d_optim, metrics=['accuracy'])
 
-        g = build_generator()
+        g = build_generator(size)
         g.load_weights('%s\\generator.weights' % cur_models)
 
         g_optim = Adam(lr=0.0001, beta_1=0.5)
@@ -188,11 +152,12 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         d_optim = Adam(lr=0.00001)
         g_optim = Adam(lr=0.0001, beta_1=0.5)
 
-        d = build_discriminator()
-        d.trainable = True
+        d = build_discriminator(size)
         d.compile(loss='binary_crossentropy', optimizer=d_optim, metrics=['accuracy'])
+        d.summary()
 
-        g = build_generator()
+        g = build_generator(size)
+        g.summary()
 
         d_on_g = generator_containing_discriminator(g, d)
         d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
@@ -316,8 +281,10 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             tb_writer.add_summary(g_loss_summary, (epoch * number_of_batches) + minibatch_index)
             tb_writer.flush()
 
-            print('epoch [%d/%d] :: batch [%d/%d] :: dis_acc = %.1f%% :: dis_loss = %s :: gen_loss = %s' % (
-                epoch, epochs, minibatch_index, number_of_batches, d_avg_acc * 100, d_avg_loss, g_loss))
+            print('epoch [%d/%d] :: batch [%d/%d] :: fake_acc = %.1f%% :: real_acc = %.1f%% :: ' \
+                  'acc = %.1f%% :: dis_loss = %s :: gen_loss = %s' % (
+                      epoch, epochs, minibatch_index, number_of_batches, d_fake_acc * 100, d_real_acc * 100,
+                      d_avg_acc * 100, d_avg_loss, g_loss))
 
             # Save models
             time_since_save = time.time() - last_save_time
@@ -345,7 +312,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=100, world_count=5000, initial_epoch=0)
+    train(epochs=100, batch_size=100, world_count=1000, initial_epoch=0)
 
 
 if __name__ == '__main__':
