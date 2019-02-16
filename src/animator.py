@@ -3,10 +3,8 @@ import os
 import keras.backend as K
 import numpy as np
 import tensorflow as tf
-from keras.layers.convolutional import Conv2D
-from keras.layers.core import Activation
-from keras.layers.normalization import BatchNormalization
-from keras.models import Model, Input
+from keras.layers.core import Dense
+from keras.models import Input
 from keras.optimizers import Adam
 
 import utils
@@ -14,49 +12,22 @@ from loadworker import load_worlds
 
 
 def build_animator(block_backwards, minimap_values, size):
-    input_tensor = Input(shape=(size, size, 3))
+    # Takes in latent input, and target minimap colors
+    # Outputs a real world whose minimap is supposed to reflect the target minimap
 
-    x = Conv2D(filters=512, kernel_size=3, strides=1, padding='same')(input_tensor)
-    x = BatchNormalization(momentum=0.8)(x)
-    x = Activation('relu')(x)
+    # Calculate starting kernel size
+    n = size
+    while n > 7:
+        n = n // 2
 
-    x = Conv2D(filters=10, kernel_size=5, strides=1, padding='same')(x)
-    x = BatchNormalization(momentum=0.8)(x)
-    x = Activation('sigmoid')(x)
+    f = 512
 
-    animator_model = Model(inputs=[input_tensor], outputs=[x])
-    return animator_model, input_tensor
+    latent_input = Dense(input_dim=128, units=n * n * f)
 
+    target_input = Input(shape=(size * size * 3))
+    # target =
 
-def get_minimaps(worlds, block_backward, minimap_values):
-    # Get minimaps
-    batch_size = worlds.shape[0]
-    world_width = worlds.shape[1]
-    world_height = worlds.shape[2]
-    minimaps = np.zeros((batch_size, world_width, world_height, 3), dtype=float)
-
-    for i in range(batch_size):
-        decoded_world = utils.decode_world_sigmoid(block_backward, worlds[i])
-        minimaps[i] = utils.encode_world_minimap2d(minimap_values, decoded_world)
-
-    return minimaps
-
-
-def painting_loss(minimap_values):
-    def loss(y_true, y_pred):
-        output_worlds = K.eval(y_pred)
-        output_pred = get_minimaps(output_worlds, minimap_values)
-        output_tensor = tf.convert_to_tensor(output_pred)
-
-        input_worlds = K.eval(y_true)
-
-        input_true = get_minimaps(input_worlds, minimap_values)
-        input_tensor = tf.convert_to_tensor(input_true)
-
-        # return K.abs(input_tensor - output_tensor)
-        return K.mean(K.square(output_tensor - input_tensor), axis=-1)
-
-    return loss
+    pass
 
 
 def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
@@ -139,7 +110,9 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=13, batch_size=32, world_count=1000)
+
+
+# train(epochs=13, batch_size=32, world_count=1000)
     # predict('ver9', dict_src_name='pro_labels')
 
 
