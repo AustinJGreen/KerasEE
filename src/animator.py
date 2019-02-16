@@ -3,8 +3,13 @@ import os
 import keras.backend as K
 import numpy as np
 import tensorflow as tf
-from keras.layers.core import Dense
+from keras.layers.advanced_activations import LeakyReLU
+from keras.layers.convolutional import Conv2DTranspose
+from keras.layers.core import Dense, Reshape, Activation
+from keras.layers.merge import Concatenate
+from keras.layers.normalization import BatchNormalization
 from keras.models import Input
+from keras.models import Model
 from keras.optimizers import Adam
 
 import utils
@@ -20,14 +25,43 @@ def build_animator(block_backwards, minimap_values, size):
     while n > 7:
         n = n // 2
 
-    f = 512
+    # Calculate latent_units, get closest factor with enough units (>1024 units each)
+    latent_units = n * n
+    while latent_units < 1024:
+        latent_units = latent_units * 2
 
-    latent_input = Dense(input_dim=128, units=n * n * f)
+    # Calculate starting filters
+    f = (2 * latent_units) // (n * n)
 
-    target_input = Input(shape=(size * size * 3))
-    # target =
+    latent_input = Input(shape=(128,))
+    latent = Dense(units=latent_units)(latent_input)
 
-    pass
+    target_input = Input(shape=(size, size, 3))
+    target = Reshape(target_shape=(size * size * 3,))(target_input)
+    target = Dense(units=latent_units)(target)
+
+    animator = Concatenate()([latent, target])
+    animator = Reshape(target_shape=(n, n, f))(animator)
+
+    s = n
+    while s < size:
+        animator = Conv2DTranspose(f, kernel_size=5, strides=1, padding='same')(animator)
+        animator = BatchNormalization(momentum=0.8)(animator)
+        animator = LeakyReLU()(animator)
+
+        animator = Conv2DTranspose(f, kernel_size=3, strides=2, padding='same')(animator)
+        animator = BatchNormalization(momentum=0.8)(animator)
+        animator = LeakyReLU()(animator)
+
+        s = s * 2
+        f = f // 2
+
+    animator = Conv2DTranspose(10, kernel_size=5, strides=1, padding='same')(animator)
+    animator = Activation('sigmoid')(animator)
+
+    model = Model(inputs=[latent_input, target_input], outputs=animator)
+    model.summary()
+    return model
 
 
 def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
@@ -64,7 +98,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print('Building model from scratch...')
     optim = Adam(lr=0.0001)
 
-    animator, c_input = build_animator(block_backward, minimap_values, 112)
+    animator, c_input = build_animator(block_backward, minimap_values, 64)
 
     animator.summary()
     animator.compile(loss='mse', optimizer=optim)
@@ -110,9 +144,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-
-
-# train(epochs=13, batch_size=32, world_count=1000)
+    train(epochs=13, batch_size=32, world_count=1000)
     # predict('ver9', dict_src_name='pro_labels')
 
 

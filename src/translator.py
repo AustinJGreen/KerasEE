@@ -121,8 +121,8 @@ def test(version_name, samples):
 
 
 def main():
-    train(epochs=50, batch_size=1, world_count=10000)
-    # test('ver14', 15)
+    # train(epochs=50, batch_size=1, world_count=10000)
+    test('ver15', 15)
 
 
 if __name__ == '__main__':
