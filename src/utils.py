@@ -305,16 +305,6 @@ def encode_world_tanh(block_forward, world_data):
     return world_copy
 
 
-def encode_block_color(minimap_values, block):
-    v = minimap_values[block]
-    a = (v >> 24) & 0xFF
-    r = (v >> 16) & 0xFF
-    g = (v >> 8) & 0xFF
-    b = v & 0xFF
-    if a != 0 and b != 0 and v != 0:
-        return (r - 127.5) / 127.5, (g - 127.5) / 127.5, (b - 127.5) / 127.5
-
-
 def encode_world_minimap(minimap_values, world_data):
     if len(world_data.shape) == 2:
         return encode_world_minimap2d(minimap_values, world_data)
@@ -341,10 +331,9 @@ def encode_world_minimap2d(minimap_values, world_data):
                 r = (v >> 16) & 0xFF
                 g = (v >> 8) & 0xFF
                 b = v & 0xFF
-                if a != 0 and b != 0 and v != 0:
-                    encoded_values[x, y, 0] = (r - 127.5) / 127.5
-                    encoded_values[x, y, 1] = (g - 127.5) / 127.5
-                    encoded_values[x, y, 2] = (b - 127.5) / 127.5
+                encoded_values[x, y, 0] = r / 255.0
+                encoded_values[x, y, 1] = g / 255.0
+                encoded_values[x, y, 2] = b / 255.0
 
     return encoded_values
 
@@ -364,24 +353,23 @@ def encode_world_minimap3d(minimap_values, world_data):
                     r = (v >> 16) & 0xFF
                     g = (v >> 8) & 0xFF
                     b = v & 0xFF
-                    if a != 0 and b != 0 and v != 0:
-                        encoded_values[x, y, 0] = (r - 127.5) / 127.5
-                        encoded_values[x, y, 1] = (g - 127.5) / 127.5
-                        encoded_values[x, y, 2] = (b - 127.5) / 127.5
+                    encoded_values[x, y, 0] = r / 255.0
+                    encoded_values[x, y, 1] = g / 255.0
+                    encoded_values[x, y, 2] = b / 255.0
 
     return encoded_values
 
 
-def decode_world_minimap(world_data):
-    width = world_data.shape[0]
-    height = world_data.shape[1]
+def decode_world_minimap(minimap_data):
+    width = minimap_data.shape[0]
+    height = minimap_data.shape[1]
 
     decoded_values = np.zeros((width, height, 3), dtype=int)
     for x in range(width):
         for y in range(height):
-            decoded_values[x, y, 0] = (world_data[x, y, 0] * 127.5) + 127.5
-            decoded_values[x, y, 1] = (world_data[x, y, 1] * 127.5) + 127.5
-            decoded_values[x, y, 2] = (world_data[x, y, 2] * 127.5) + 127.5
+            decoded_values[x, y, 0] = int(round(minimap_data[x, y, 0] * 255.0))
+            decoded_values[x, y, 1] = int(round(minimap_data[x, y, 1] * 255.0))
+            decoded_values[x, y, 2] = int(round(minimap_data[x, y, 2] * 255.0))
 
     return decoded_values
 
@@ -462,13 +450,13 @@ def save_world_data(world_data, name):
         print('Failed to save world data to %s' % name)
 
 
-def save_world_minimap(minimap, world_data, name):
+def save_world_minimap(minimap_values, world_data, name):
     if len(world_data.shape) == 2:
-        save_world_minimap2d(minimap, world_data, name)
+        save_world_minimap2d(minimap_values, world_data, name)
     elif len(world_data.shape) == 3 and world_data.shape[2] == 1:
-        save_world_minimap2d(minimap, np.reshape(world_data, (world_data.shape[0], world_data.shape[1])), name)
+        save_world_minimap2d(minimap_values, np.reshape(world_data, (world_data.shape[0], world_data.shape[1])), name)
     elif len(world_data.shape) == 3 and world_data.shape[2] == 2:
-        save_world_minimap3d(minimap, world_data, name)
+        save_world_minimap3d(minimap_values, world_data, name)
     else:
         print('Unable to save minimap with shape %s' % world_data.shape)
 

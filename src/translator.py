@@ -1,5 +1,6 @@
 import os
 
+import keras
 import numpy as np
 from keras.layers.convolutional import Conv2D
 from keras.models import Sequential
@@ -60,7 +61,6 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     graph_dir = utils.check_or_create_local_path('graph', model_dir)
     graph_version_dir = utils.check_or_create_local_path(version_name, graph_dir)
 
-    previews_dir = utils.check_or_create_local_path('previews', version_dir)
     model_save_dir = utils.check_or_create_local_path('models', version_dir)
 
     print('Saving source...')
@@ -84,9 +84,27 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     x_train, y_train = load_worlds_with_minimaps(world_count, '%s\\worlds\\' % res_dir, (112, 112), block_forward,
                                                  minimap_values)
 
+    # Create callback for automatically saving lastest model so training can be resumed. Saves every epoch
+    latest_h5_callback = keras.callbacks.ModelCheckpoint('%s\\latest.h5' % model_save_dir, verbose=0,
+                                                         save_best_only=False,
+                                                         save_weights_only=False, mode='auto', period=1)
+
+    # Create callback for automatically saving lastest weights so training can be resumed. Saves every epoch
+    latest_weights_callback = keras.callbacks.ModelCheckpoint('%s\\latest.weights' % model_save_dir, verbose=0,
+                                                              save_best_only=False,
+                                                              save_weights_only=True, mode='auto', period=1)
+
+    # Create callback for tensorboard
+    tb_callback = keras.callbacks.TensorBoard(log_dir=graph_version_dir, batch_size=batch_size, write_graph=False,
+                                              write_grads=True)
+
+    callback_list = [latest_h5_callback, latest_weights_callback, tb_callback]
+
+    translator.fit(x_train, y_train, batch_size, epochs, callbacks=callback_list)
+
 
 def main():
-    train(epochs=13, batch_size=100, world_count=1000)
+    train(epochs=13, batch_size=50, world_count=25000)
     # train(epochs=13, batch_size=32, world_count=1000)
     # predict('ver9', dict_src_name='pro_labels')
 

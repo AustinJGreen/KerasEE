@@ -246,7 +246,7 @@ def load_worlds_with_minimaps(load_count, world_directory, gen_size, block_forwa
             file_queue.put(world_directory + name)
 
         world_array = np.zeros((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
-        world_minimaps = []
+        world_minimaps = np.zeros((load_count, gen_size[0], gen_size[1], 3), dtype=float)
 
         world_counter = Value('i', 0)
         thread_lock = Lock()
@@ -254,7 +254,7 @@ def load_worlds_with_minimaps(load_count, world_directory, gen_size, block_forwa
         threads = []
         for thread in range(thread_count):
             load_thread = WorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_size,
-                                      block_forward, minimap_values=minimap_values, **kwargs)
+                                      block_forward, minimap_values=minimap_values, load_minimap=True, **kwargs)
             load_thread.start()
             threads.append(load_thread)
 
@@ -263,14 +263,15 @@ def load_worlds_with_minimaps(load_count, world_directory, gen_size, block_forwa
             threads[thread].join()
             print('Thread [%s] joined.' % thread)
             thread_load_queue = threads[thread].get_worlds()
-            label_load_queue = threads[thread].get_labels()
+            minimap_load_queue = threads[thread].get_minimaps()
             print('Adding Thread [%s] queue.' % thread)
             while thread_load_queue.qsize() > 0:
                 world_array[world_index] = thread_load_queue.get()
-                world_minimaps.append(label_load_queue.get())
+                world_minimaps[world_index] = minimap_load_queue.get()
                 world_index += 1
 
         world_array = world_array[:world_index, :, :, :]
+        world_minimaps = world_minimaps[:world_index, :, :, :]
     return world_array, world_minimaps
 
 
@@ -444,6 +445,7 @@ class WorldLoader(Process):
 
         self.encode_func = kwargs.get('encode_func', utils.encode_world_sigmoid)
         self.label_dict = kwargs.get('label_dict', None)
+
         self.label_target = kwargs.get('label_target', None)
         self.overlap_x = kwargs.get('overlap_x', 1)
         self.overlap_y = kwargs.get('overlap_y', 1)
@@ -473,3 +475,6 @@ class WorldLoader(Process):
 
     def get_labels(self):
         return self.label_queue
+
+    def get_minimaps(self):
+        return self.minimap_queue
