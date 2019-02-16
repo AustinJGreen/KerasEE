@@ -216,7 +216,7 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
                 continue
 
             # Create prediction
-            batch_input = np.zeros((1, world_size, world_size, 10), dtype=np.int8)
+            batch_input = np.empty((1, world_size, world_size, 10), dtype=np.int8)
             batch_input[0] = encoded_regions[0]
             batch_score = classifier.predict(batch_input)
             pro_score = batch_score[0][0]

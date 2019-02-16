@@ -104,7 +104,7 @@ def on_init(r, init_message):
     global world_data
     world_data = get_world_data(init_message)
 
-    wd = np.zeros((width, height), dtype=int)
+    wd = np.empty((width, height), dtype=int)
     for x in range(width):
         for y in range(height):
             wd[x, y] = world_data[x, y, 0].block_id

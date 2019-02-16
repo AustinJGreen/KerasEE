@@ -193,7 +193,7 @@ def decode_world_sigmoid(block_backward, world_data):
     bits = world_data.shape[2]
     width = world_data.shape[0]
     height = world_data.shape[1]
-    world_copy = np.zeros((width, height), dtype=int)
+    world_copy = np.empty((width, height), dtype=int)
     for y in range(height):
         for x in range(width):
             value = 0
@@ -218,7 +218,7 @@ def decode_world_tanh(block_backward, world_data):
     bits = world_data.shape[2]
     width = world_data.shape[0]
     height = world_data.shape[1]
-    world_copy = np.zeros((width, height), dtype=int)
+    world_copy = np.empty((width, height), dtype=int)
     for y in range(height):
         for x in range(width):
             value = 0
@@ -243,7 +243,7 @@ def encode_world_sigmoid(block_forward, world_data):
     width = world_data.shape[0]
     height = world_data.shape[1]
     bits = 10
-    world_copy = np.zeros((width, height, bits), dtype=np.int8)
+    world_copy = np.empty((width, height, bits), dtype=np.int8)
 
     if len(world_data.shape) == 2:
         for y in range(height):
@@ -275,7 +275,7 @@ def encode_world_tanh(block_forward, world_data):
     width = world_data.shape[0]
     height = world_data.shape[1]
     bits = 10
-    world_copy = np.zeros((width, height, bits), dtype=np.int8)
+    world_copy = np.empty((width, height, bits), dtype=np.int8)
 
     if len(world_data.shape) == 2:
         for y in range(height):
@@ -321,7 +321,7 @@ def encode_world_minimap2d(minimap_values, world_data):
     width = world_data.shape[0]
     height = world_data.shape[1]
 
-    encoded_values = np.zeros((width, height, 3), dtype=float)
+    encoded_values = np.empty((width, height, 3), dtype=float)
     for x in range(width):
         for y in range(height):
             block = int(world_data[x, y])
@@ -342,7 +342,7 @@ def encode_world_minimap3d(minimap_values, world_data):
     width = world_data.shape[0]
     height = world_data.shape[1]
 
-    encoded_values = np.zeros((width, height, 3), dtype=float)
+    encoded_values = np.empty((width, height, 3), dtype=float)
     for z in range(2):
         for x in range(width):
             for y in range(height):
@@ -364,7 +364,7 @@ def decode_world_minimap(minimap_data):
     width = minimap_data.shape[0]
     height = minimap_data.shape[1]
 
-    decoded_values = np.zeros((width, height, 3), dtype=int)
+    decoded_values = np.empty((width, height, 3), dtype=int)
     for x in range(width):
         for y in range(height):
             decoded_values[x, y, 0] = int(round(minimap_data[x, y, 0] * 255.0))
@@ -624,7 +624,7 @@ def rotate_world90(world_data):
     world_width = world_data.shape[0]
     world_height = world_data.shape[1]
 
-    rotated_world = np.zeros((world_width, world_height), dtype=world_data.dtype)
+    rotated_world = np.empty((world_width, world_height), dtype=world_data.dtype)
     for y in range(world_height):
         for x in range(world_width):
             cur_id = world_data[x, y]

@@ -80,7 +80,7 @@ def load_worlds(load_count, world_directory, gen_size, block_forward, **kwargs):
         for name in world_names:
             file_queue.put(world_directory + name)
 
-        world_array = np.zeros((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
+        world_array = np.empty((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
 
         world_counter = Value('i', 0)
         thread_lock = Lock()
@@ -121,8 +121,8 @@ def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, b
         for key in dict_keys:
             file_queue.put(key)
 
-        world_array = np.zeros((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
-        world_labels = np.zeros((load_count, 1), dtype=np.int8)
+        world_array = np.empty((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
+        world_labels = np.empty((load_count, 1), dtype=np.int8)
 
         world_counter = Value('i', 0)
         thread_lock = Lock()
@@ -166,7 +166,7 @@ def load_worlds_with_label(load_count, world_directory, label_dict, label_target
         for key in dict_keys:
             file_queue.put(key)
 
-        world_array = np.zeros((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
+        world_array = np.empty((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
 
         world_counter = Value('i', 0)
         thread_lock = Lock()
@@ -204,7 +204,7 @@ def load_worlds_with_files(load_count, world_directory, gen_size, block_forward,
         for name in world_names:
             file_queue.put(world_directory + name)
 
-        world_array = np.zeros((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
+        world_array = np.empty((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
         world_files = []
 
         world_counter = Value('i', 0)
@@ -245,8 +245,8 @@ def load_worlds_with_minimaps(load_count, world_directory, gen_size, block_forwa
         for name in world_names:
             file_queue.put(world_directory + name)
 
-        world_array = np.zeros((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
-        world_minimaps = np.zeros((load_count, gen_size[0], gen_size[1], 3), dtype=float)
+        world_array = np.empty((load_count, gen_size[0], gen_size[1], 10), dtype=np.int8)
+        world_minimaps = np.empty((load_count, gen_size[0], gen_size[1], 3), dtype=float)
 
         world_counter = Value('i', 0)
         thread_lock = Lock()

@@ -253,7 +253,7 @@ def predict_sample_matlab(network_ver, samples):
             continue
 
         # Create prediction
-        batch_input = np.zeros((1, world_size, world_size, 10), dtype=np.int8)
+        batch_input = np.empty((1, world_size, world_size, 10), dtype=np.int8)
         batch_input[0] = encoded_regions[0]
         encoded_world = auto_encoder.predict(batch_input)
 

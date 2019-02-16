@@ -32,20 +32,6 @@ def build_translator(size):
     return model
 
 
-def get_minimaps(worlds, block_backward, minimap_values):
-    # Get minimaps
-    batch_size = worlds.shape[0]
-    world_width = worlds.shape[1]
-    world_height = worlds.shape[2]
-    minimaps = np.zeros((batch_size, world_width, world_height, 3), dtype=float)
-
-    for i in range(batch_size):
-        decoded_world = utils.decode_world_sigmoid(block_backward, worlds[i])
-        minimaps[i] = utils.encode_world_minimap2d(minimap_values, decoded_world)
-
-    return minimaps
-
-
 def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
@@ -126,7 +112,7 @@ def test(version_name, samples):
     block_images = utils.load_block_images(res_dir)
 
     print('Loading encoding dictionaries...')
-    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_colored')
+    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     print('Loading model...')
     translator = load_model('%s\\latest.h5' % model_save_dir)
@@ -147,8 +133,7 @@ def test(version_name, samples):
 
 def main():
     train(epochs=25, batch_size=1, world_count=1000)
-    # train(epochs=13, batch_size=32, world_count=1000)
-    # test('ver1', 10)
+    # test('ver4', 10)
 
 
 if __name__ == '__main__':
