@@ -72,7 +72,7 @@ def load_worlds(load_count, world_directory, gen_size, block_forward, **kwargs):
     world_names = os.listdir(world_directory)
     random.shuffle(world_names)
 
-    thread_count = cpu_count() - 1
+    thread_count = min(load_count, cpu_count() - 1)
 
     with Manager() as manager:
         file_queue = manager.Queue()
@@ -107,7 +107,7 @@ def load_worlds(load_count, world_directory, gen_size, block_forward, **kwargs):
 
 
 def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, block_forward, **kwargs):
-    thread_count = cpu_count() - 1
+    thread_count = min(load_count, cpu_count() - 1)
 
     with Manager() as manager:
         file_queue = manager.Queue()
@@ -152,7 +152,7 @@ def load_worlds_with_labels(load_count, world_directory, label_dict, gen_size, b
 
 
 def load_worlds_with_label(load_count, world_directory, label_dict, label_target, gen_size, block_forward, **kwargs):
-    thread_count = cpu_count() - 1
+    thread_count = min(load_count, cpu_count() - 1)
 
     with Manager() as manager:
         file_queue = manager.Queue()
@@ -196,7 +196,7 @@ def load_worlds_with_files(load_count, world_directory, gen_size, block_forward,
     world_names = os.listdir(world_directory)
     random.shuffle(world_names)
 
-    thread_count = cpu_count() - 1
+    thread_count = min(load_count, cpu_count() - 1)
 
     with Manager() as manager:
         file_queue = manager.Queue()
@@ -237,7 +237,7 @@ def load_worlds_with_minimaps(load_count, world_directory, gen_size, block_forwa
     world_names = os.listdir(world_directory)
     random.shuffle(world_names)
 
-    thread_count = cpu_count() - 1
+    thread_count = min(load_count, cpu_count() - 1)
 
     with Manager() as manager:
         file_queue = manager.Queue()
