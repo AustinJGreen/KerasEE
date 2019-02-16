@@ -245,28 +245,16 @@ def encode_world_sigmoid(block_forward, world_data):
     bits = 10
     world_copy = np.empty((width, height, bits), dtype=np.int8)
 
-    if len(world_data.shape) == 2:
-        for y in range(height):
-            for x in range(width):
-                value = int(world_data[x, y])
-                if value in block_forward:
-                    value = block_forward[value]
-                else:
-                    value = 0
-                for bit in range(bits):
-                    bit_value = (value >> bit) & 1
-                    world_copy[x, y, bits - 1 - bit] = bit_value  # [0, 1]
-    elif len(world_data.shape) == 3:  # Just take foreground
-        for y in range(height):
-            for x in range(width):
-                value = int(world_data[x, y, 0])
-                if value in block_forward:
-                    value = block_forward[value]
-                else:
-                    value = 0
-                for bit in range(bits):
-                    bit_value = (value >> bit) & 1
-                    world_copy[x, y, bits - 1 - bit] = bit_value  # [0, 1]
+    for y in range(height):
+        for x in range(width):
+            value = int(world_data[x, y])
+            if value in block_forward:
+                value = block_forward[value]
+            else:
+                value = 0
+            for bit in range(bits):
+                bit_value = (value >> bit) & 1
+                world_copy[x, y, bits - 1 - bit] = bit_value  # [0, 1]
 
     return world_copy
 
@@ -277,47 +265,22 @@ def encode_world_tanh(block_forward, world_data):
     bits = 10
     world_copy = np.empty((width, height, bits), dtype=np.int8)
 
-    if len(world_data.shape) == 2:
-        for y in range(height):
-            for x in range(width):
-                value = int(world_data[x, y])
-                if value in block_forward:
-                    value = block_forward[value]
-                else:
-                    value = 0
-                for bit in range(bits):
-                    bit_value = (value >> bit) & 1
-                    bit_value_reshaped = (bit_value * 2) - 1
-                    world_copy[x, y, bits - 1 - bit] = bit_value_reshaped  # [-1, 1]
-    elif len(world_data.shape) == 3:  # Just take foreground
-        for y in range(height):
-            for x in range(width):
-                value = int(world_data[x, y, 0])
-                if value in block_forward:
-                    value = block_forward[value]
-                else:
-                    value = 0
-                for bit in range(bits):
-                    bit_value = (value >> bit) & 1
-                    bit_value_reshaped = (bit_value * 2) - 1
-                    world_copy[x, y, bits - 1 - bit] = bit_value_reshaped  # [-1, 1]
+    for y in range(height):
+        for x in range(width):
+            value = int(world_data[x, y])
+            if value in block_forward:
+                value = block_forward[value]
+            else:
+                value = 0
+            for bit in range(bits):
+                bit_value = (value >> bit) & 1
+                bit_value_reshaped = (bit_value * 2) - 1
+                world_copy[x, y, bits - 1 - bit] = bit_value_reshaped  # [-1, 1]
 
     return world_copy
 
 
 def encode_world_minimap(minimap_values, world_data):
-    if len(world_data.shape) == 2:
-        return encode_world_minimap2d(minimap_values, world_data)
-    elif len(world_data.shape) == 3 and world_data.shape[2] == 1:
-        return encode_world_minimap2d(minimap_values,
-                                      np.reshape(world_data, (world_data.shape[0], world_data.shape[1])))
-    elif len(world_data.shape) == 3 and world_data.shape[2] == 2:
-        return encode_world_minimap3d(minimap_values, world_data)
-    else:
-        print('Unable to encode world minimap with shape %s' % world_data.shape)
-
-
-def encode_world_minimap2d(minimap_values, world_data):
     width = world_data.shape[0]
     height = world_data.shape[1]
 
@@ -334,28 +297,10 @@ def encode_world_minimap2d(minimap_values, world_data):
                 encoded_values[x, y, 0] = r / 255.0
                 encoded_values[x, y, 1] = g / 255.0
                 encoded_values[x, y, 2] = b / 255.0
-
-    return encoded_values
-
-
-def encode_world_minimap3d(minimap_values, world_data):
-    width = world_data.shape[0]
-    height = world_data.shape[1]
-
-    encoded_values = np.empty((width, height, 3), dtype=float)
-    for z in range(2):
-        for x in range(width):
-            for y in range(height):
-                block = int(world_data[x, y, 1 - z])
-                if block in minimap_values:
-                    v = minimap_values[block]
-                    a = (v >> 24) & 0xFF
-                    r = (v >> 16) & 0xFF
-                    g = (v >> 8) & 0xFF
-                    b = v & 0xFF
-                    encoded_values[x, y, 0] = r / 255.0
-                    encoded_values[x, y, 1] = g / 255.0
-                    encoded_values[x, y, 2] = b / 255.0
+            else:
+                encoded_values[x, y, 0] = 0.0
+                encoded_values[x, y, 1] = 0.0
+                encoded_values[x, y, 2] = 0.0
 
     return encoded_values
 

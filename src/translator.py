@@ -20,10 +20,6 @@ def build_translator(size):
 
     model = Sequential()
 
-    # model.add(Reshape(input_shape=(64, 64, 10), target_shape=(64 * 64 * 10,)))
-    # model.add(Dense(units=64 * 64 * 3, activation='sigmoid'))
-    # model.add(Reshape(target_shape=(64, 64, 3)))
-
     model.add(Conv2D(2048, kernel_size=(1, 1), strides=(1, 1), padding='same', input_shape=(size, size, 10)))
     model.add(Activation('relu'))
     model.add(Conv2D(3, kernel_size=(1, 1), strides=(1, 1), padding='same'))
@@ -65,7 +61,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print('Building model from scratch...')
     optim = Adam(lr=0.0001)
     translator = build_translator(112)
-    translator.compile(optim, loss='mse')
+    translator.compile(optimizer='sgd', loss='mse')
 
     print('Loading worlds...')
     x_train, y_train = load_worlds_with_minimaps(world_count, '%s\\worlds\\' % res_dir, (112, 112), block_forward,
@@ -132,7 +128,7 @@ def test(version_name, samples):
 
 
 def main():
-    train(epochs=25, batch_size=1, world_count=1000)
+    train(epochs=50, batch_size=1, world_count=100)
     # test('ver4', 10)
 
 
