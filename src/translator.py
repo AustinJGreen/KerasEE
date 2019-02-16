@@ -6,6 +6,7 @@ from keras.models import Sequential
 from keras.optimizers import Adam
 
 import utils
+from loadworker import load_worlds
 
 
 def build_translator(size):
@@ -78,6 +79,9 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     optim = Adam(lr=0.0001)
     translator = build_translator(112)
     translator.compile(optim, loss='mse')
+
+    print('Loading worlds...')
+    x_train = load_worlds(world_count, '%s\\worlds\\' % res_dir, (112, 112), block_forward)
 
 
 def main():
