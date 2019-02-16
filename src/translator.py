@@ -6,7 +6,7 @@ from keras.models import Sequential
 from keras.optimizers import Adam
 
 import utils
-from loadworker import load_worlds
+from loadworker import load_worlds_with_minimaps
 
 
 def build_translator(size):
@@ -81,7 +81,8 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     translator.compile(optim, loss='mse')
 
     print('Loading worlds...')
-    x_train = load_worlds(world_count, '%s\\worlds\\' % res_dir, (112, 112), block_forward)
+    x_train, y_train = load_worlds_with_minimaps(world_count, '%s\\worlds\\' % res_dir, (112, 112), block_forward,
+                                                 minimap_values)
 
 
 def main():

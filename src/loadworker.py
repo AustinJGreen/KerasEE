@@ -324,7 +324,7 @@ class WorldLoader(Process):
                 self.time_pt_cnt += 1
 
         if self.time_pt_cnt > 0:
-            time_left_sec = np.median(time_points[0:self.time_pt_cnt]) * worlds_left
+            time_left_sec = np.average(time_points[0:self.time_pt_cnt]) * worlds_left
             time_left = time_left_sec / 60.0
             time_left_minutes = int(time_left)
             time_left_minutes_frac = time_left - time_left_minutes
