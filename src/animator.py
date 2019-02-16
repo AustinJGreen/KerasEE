@@ -9,14 +9,15 @@ from keras.layers.core import Dense, Reshape, Activation
 from keras.layers.merge import Concatenate
 from keras.layers.normalization import BatchNormalization
 from keras.models import Input
-from keras.models import Model
+from keras.models import Model, Sequential
 from keras.optimizers import Adam
 
 import utils
 from loadworker import load_worlds
+from translator import build_translator
 
 
-def build_animator(block_backwards, minimap_values, size):
+def build_animator(size):
     # Takes in latent input, and target minimap colors
     # Outputs a real world whose minimap is supposed to reflect the target minimap
 
@@ -59,9 +60,18 @@ def build_animator(block_backwards, minimap_values, size):
     animator = Conv2DTranspose(10, kernel_size=5, strides=1, padding='same')(animator)
     animator = Activation('sigmoid')(animator)
 
-    model = Model(inputs=[latent_input, target_input], outputs=animator)
-    model.summary()
-    return model
+    animator_model = Model(inputs=[latent_input, target_input], outputs=animator)
+    animator_model.summary()
+
+    translator_model = build_translator(size)
+    translator_model.trainable = False
+
+    animator_trainer_model = Sequential()
+    animator_trainer_model.add(animator_model)
+    animator_trainer_model.add(translator_model)
+    animator_trainer_model.summary()
+
+    return animator_trainer_model, animator_model
 
 
 def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
@@ -98,7 +108,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     print('Building model from scratch...')
     optim = Adam(lr=0.0001)
 
-    animator, c_input = build_animator(block_backward, minimap_values, 64)
+    animator, c_input = build_animator(64)
 
     animator.summary()
     animator.compile(loss='mse', optimizer=optim)

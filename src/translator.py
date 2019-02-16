@@ -27,7 +27,7 @@ def build_translator(size):
     return model
 
 
-def train(epochs, batch_size, world_count, version_name=None):
+def train(epochs, batch_size, world_count, size, version_name=None):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
@@ -55,11 +55,11 @@ def train(epochs, batch_size, world_count, version_name=None):
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     print('Building model from scratch...')
-    translator = build_translator(112)
+    translator = build_translator(size)
     translator.compile(optimizer='adam', loss='mse')
 
     print('Loading worlds...')
-    x_train, y_train = load_worlds_with_minimaps(world_count, '%s\\worlds\\' % res_dir, (112, 112), block_forward,
+    x_train, y_train = load_worlds_with_minimaps(world_count, '%s\\worlds\\' % res_dir, (size, size), block_forward,
                                                  minimap_values)
 
     best_loss_callback = keras.callbacks.ModelCheckpoint('%s\\best_loss.h5' % model_save_dir, verbose=0,
@@ -106,9 +106,10 @@ def test(version_name, samples):
 
     print('Loading model...')
     translator = load_model('%s\\best_loss.h5' % model_save_dir)
+    size = translator.input_shape[1]
 
     print('Loading worlds...')
-    x_train, y_train = load_worlds_with_minimaps(samples, '%s\\worlds\\' % res_dir, (112, 112), block_forward,
+    x_train, y_train = load_worlds_with_minimaps(samples, '%s\\worlds\\' % res_dir, (size, size), block_forward,
                                                  minimap_values)
 
     for i in range(samples):
@@ -121,8 +122,8 @@ def test(version_name, samples):
 
 
 def main():
-    # train(epochs=50, batch_size=1, world_count=10000)
-    test('ver15', 15)
+    train(epochs=50, batch_size=1, size=64, world_count=20000)
+    # test('ver15', 15)
 
 
 if __name__ == '__main__':
