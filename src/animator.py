@@ -1,9 +1,7 @@
-import math
 import os
 
 import keras
 import numpy as np
-import tensorflow as tf
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Conv2DTranspose, Conv2D
 from keras.layers.core import Dense, Reshape, Activation
@@ -15,6 +13,7 @@ from keras.models import Model, Sequential, load_model
 import utils
 from loadworker import load_worlds_with_minimaps
 from pro_classifier import build_classifier
+from tbmanager import TensorboardManager
 
 
 def build_pro_animator(size):
@@ -136,7 +135,7 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
     animator = build_basic_animator(112)
     animator.compile(loss='mse', optimizer='adam')
 
-    translator = load_model('%s\\translator\\ver15\\models\\best_loss.h5' % all_models_dir)
+    translator = load_model(f'{all_models_dir}\\translator\\ver15\\models\\best_loss.h5')
     translator.trainable = False
 
     animator_minimap = Sequential()
@@ -145,24 +144,18 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
     animator_minimap.compile(loss='mse', optimizer='adam')
 
     print('Saving model images...')
-    keras.utils.plot_model(animator, to_file='%s\\animator.png' % version_dir, show_shapes=True, show_layer_names=True)
-
-    # Set up tensorboard
-    print('Setting up tensorboard...')
-    tb_callback = keras.callbacks.TensorBoard(log_dir=graph_version_dir, write_graph=True)
-    tb_callback.set_model(animator_minimap)
-
-    # before training init writer (for tensorboard log) / model
-    tb_writer = tf.summary.FileWriter(logdir=graph_version_dir)
-    mm_loss = tf.Summary()
-    mm_loss.value.add(tag='ae_loss', simple_value=None)
+    keras.utils.plot_model(animator, to_file=f'{version_dir}\\animator.png', show_shapes=True, show_layer_names=True)
 
     print('Loading worlds...')
-    y_train, x_train = load_worlds_with_minimaps(world_count, '%s\\worlds\\' % res_dir, (sz, sz), block_forward,
+    y_train, x_train = load_worlds_with_minimaps(world_count, f'{res_dir}\\worlds\\', (sz, sz), block_forward,
                                                  mm_values)
 
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
+
+    # Set up tensorboard
+    print('Setting up tensorboard...')
+    tb_manager = TensorboardManager(graph_version_dir, number_of_batches)
 
     for epoch in range(epochs):
 
@@ -175,9 +168,18 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
 
         for minibatch_index in range(number_of_batches):
             minimaps = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
-            actual = y_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
+            # actual = y_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
+
+            # Train animator
+            # world_loss = animator.train_on_batch(minimaps, actual)
+            minimap_loss = animator_minimap.train_on_batch(minimaps, minimaps)
+            tb_manager.log_var('mm_loss', epoch, minibatch_index, minimap_loss)
+
+            print(f"Epoch = {epoch}/{epochs} :: Batch = {minibatch_index}/{number_of_batches} "
+                  f":: MMLoss = {minimap_loss}")
+
+            # Save previews
             if minibatch_index == number_of_batches - 1:
-                # Save previews
                 print('Saving previews...')
                 worlds = animator.predict(minimaps)
                 for i in range(batch_size):
@@ -187,20 +189,9 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
                     mm_decoded = utils.decode_world_minimap(minimaps[i])
                     utils.save_rgb_map(mm_decoded, '%s\\target%s.png' % (cur_previews_dir, i))
 
-            # Train animator
-            # world_loss = animator.train_on_batch(minimaps, actual)
-            minimap_loss = animator_minimap.train_on_batch(minimaps, minimaps)
-
-            # Write loss
-            if not math.isnan(minimap_loss):
-                mm_loss.value[0].simple_value = minimap_loss
-                tb_writer.add_summary(mm_loss, (epoch * number_of_batches) + minibatch_index)
-
-            print(f"Epoch = {epoch}/{epochs} :: Batch = {minibatch_index}/{number_of_batches} "
-                  f":: MMLoss = {minimap_loss}")
-
             # Save models
             if minibatch_index % 100 == 99 or minibatch_index == number_of_batches - 1:
+                print('Saving models...')
                 try:
                     animator.save('%s\\animator.h5' % cur_models_dir)
                     animator.save_weights('%s\\animator.weights' % cur_models_dir)
@@ -209,7 +200,7 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
 
 
 def main():
-    train(epochs=13, batch_size=10, world_count=10000, sz=112)
+    train(epochs=13, batch_size=1, world_count=10000, sz=112)
     # predict('ver9', dict_src_name='pro_labels')
 
 

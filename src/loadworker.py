@@ -275,6 +275,45 @@ def load_worlds_with_minimaps(load_count, world_directory, gen_size, block_forwa
     return world_array, world_minimaps
 
 
+def load_minimaps(load_count, world_directory, gen_size, block_forward, minimap_values, **kwargs):
+    world_names = os.listdir(world_directory)
+    random.shuffle(world_names)
+
+    thread_count = min(load_count, cpu_count() - 1)
+
+    with Manager() as manager:
+        file_queue = manager.Queue()
+
+        for name in world_names:
+            file_queue.put(world_directory + name)
+
+        world_minimaps = np.empty((load_count, gen_size[0], gen_size[1], 3), dtype=float)
+
+        world_counter = Value('i', 0)
+        thread_lock = Lock()
+
+        threads = []
+        for thread in range(thread_count):
+            load_thread = WorldLoader(file_queue, manager, world_counter, thread_lock, load_count, gen_size,
+                                      block_forward, minimap_values=minimap_values, load_minimap=True, skip_world=True,
+                                      **kwargs)
+            load_thread.start()
+            threads.append(load_thread)
+
+        world_index = 0
+        for thread in range(len(threads)):
+            threads[thread].join()
+            print('Thread [%s] joined.' % thread)
+            minimap_load_queue = threads[thread].get_minimaps()
+            print('Adding Thread [%s] queue.' % thread)
+            while minimap_load_queue.qsize() > 0:
+                world_minimaps[world_index] = minimap_load_queue.get()
+                world_index += 1
+
+        world_minimaps = world_minimaps[:world_index, :, :, :]
+    return world_minimaps
+
+
 def is_good_world(cross_section):
     # - Count blocks
     # - Diversity of blocks
@@ -400,8 +439,16 @@ class WorldLoader(Process):
                 if (self.label_dict is not None and is_good_label_world(cross_section)) or \
                         (self.label_dict is None and is_good_world(cross_section)):
 
-                    encoded_world0 = self.encode_func(self.block_forward, cross_section)
+                    if self.skip_world:
+                        if self.load_minimap:
+                            self.thread_lock.acquire()
+                            minimap = utils.encode_world_minimap(self.minimap_values, cross_section)
+                            self.minimap_queue.put(minimap)
+                            self.world_counter.value += 1
+                            self.thread_lock.release()
+                            continue
 
+                    encoded_world0 = self.encode_func(self.block_forward, cross_section)
                     encoded_worlds = [encoded_world0]
 
                     self.thread_lock.acquire()
@@ -452,6 +499,10 @@ class WorldLoader(Process):
 
         self.load_minimap = kwargs.get('load_minimap', False)
         self.minimap_values = kwargs.get('minimap_values', None)
+        self.skip_world = kwargs.get('skip_world', False)
+
+        if self.skip_world and not self.load_minimap:
+            raise Exception('Nothing to load.')
 
         self.daemon = True
 

@@ -3,7 +3,6 @@ import time
 
 import keras
 import numpy as np
-import tensorflow as tf
 from keras.layers import Dense, Reshape
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
@@ -15,6 +14,7 @@ from keras.optimizers import Adam
 
 import utils
 from loadworker import load_worlds_with_label
+from tbmanager import TensorboardManager
 
 
 def build_generator(size):
@@ -178,40 +178,20 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                                show_layer_names=True)
         keras.utils.plot_model(g, to_file='%s\\generator.png' % version_dir, show_shapes=True, show_layer_names=True)
 
-    # Set up tensorboard
-    print('Setting up tensorboard...')
-    tb_callback = keras.callbacks.TensorBoard(log_dir=graph_version_dir, write_graph=True)
-    tb_callback.set_model(d_on_g)
-
-    # before training init writer (for tensorboard log) / model
-    tb_writer = tf.summary.FileWriter(logdir=graph_version_dir)
-    d_acc_summary = tf.Summary()
-    d_acc_summary.value.add(tag='d_acc', simple_value=None)
-    d_acc_real_summary = tf.Summary()
-    d_acc_real_summary.value.add(tag='d_acc_real', simple_value=None)
-    d_acc_fake_summary = tf.Summary()
-    d_acc_fake_summary.value.add(tag='d_acc_fake', simple_value=None)
-    d_loss_summary = tf.Summary()
-    d_loss_summary.value.add(tag='d_loss', simple_value=None)
-    d_loss_real_summary = tf.Summary()
-    d_loss_real_summary.value.add(tag='d_loss_real', simple_value=None)
-    d_loss_fake_summary = tf.Summary()
-    d_loss_fake_summary.value.add(tag='d_loss_fake', simple_value=None)
-    g_loss_summary = tf.Summary()
-    g_loss_summary.value.add(tag='g_loss', simple_value=None)
-
     # Load Data
     print('Loading worlds...')
     label_dict = utils.load_label_dict(res_dir, 'pro_labels_b')
     x_train = load_worlds_with_label(world_count, '%s\\worlds\\' % res_dir, label_dict, 1, (size, size), block_forward,
                                      overlap_x=1, overlap_y=1)
 
-    # Start Training loop
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
 
-    preview_frequency_sec = 5 * 60.0
+    # Set up tensorboard
+    print('Setting up tensorboard...')
+    tb_manager = TensorboardManager(graph_version_dir, number_of_batches)
 
+    preview_frequency_sec = 5 * 60.0
     for epoch in range(initial_epoch, epochs):
 
         # Create directories for current epoch
@@ -237,55 +217,29 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
             # Train discriminator on real worlds
             d_loss = d.train_on_batch(real_worlds, real_labels)
-            d_real_acc = d_loss[1]
-            d_real_loss = d_loss[0]
-
-            # Write accuracy for real labels
-            d_acc_real_summary.value[0].simple_value = d_real_acc
-            tb_writer.add_summary(d_acc_real_summary, (epoch * number_of_batches) + minibatch_index)
-
-            # Write loss for real labels
-            d_loss_real_summary.value[0].simple_value = d_real_loss
-            tb_writer.add_summary(d_loss_real_summary, (epoch * number_of_batches) + minibatch_index)
+            d_acc_real = d_loss[1]
+            d_loss_real = d_loss[0]
+            tb_manager.log_var('d_acc_real', epoch, minibatch_index, d_loss[1])
+            tb_manager.log_var('d_loss_real', epoch, minibatch_index, d_loss[0])
 
             # Train discriminator on fake worlds
             d_loss = d.train_on_batch(fake_worlds, fake_labels)
-            d_fake_acc = d_loss[1]
-            d_fake_loss = d_loss[0]
-
-            # Write accuracy for fake labels
-            d_acc_fake_summary.value[0].simple_value = d_fake_acc
-            tb_writer.add_summary(d_acc_fake_summary, (epoch * number_of_batches) + minibatch_index)
-
-            # Write loss for fake labels
-            d_loss_fake_summary.value[0].simple_value = d_fake_loss
-            tb_writer.add_summary(d_loss_fake_summary, (epoch * number_of_batches) + minibatch_index)
-
-            # Calculate average loss and accuracy
-            d_avg_acc = (d_real_acc + d_fake_acc) / 2.0
-            d_avg_loss = (d_real_loss + d_fake_loss) / 2.0
-
-            # Write average accuracy for real and fake labels
-            d_acc_summary.value[0].simple_value = d_avg_acc
-            tb_writer.add_summary(d_acc_summary, (epoch * number_of_batches) + minibatch_index)
-
-            # Write average loss for real and fake labels
-            d_loss_summary.value[0].simple_value = d_avg_loss
-            tb_writer.add_summary(d_loss_summary, (epoch * number_of_batches) + minibatch_index)
+            d_acc_fake = d_loss[1]
+            d_loss_fake = d_loss[0]
+            tb_manager.log_var('d_acc_fake', epoch, minibatch_index, d_loss[1])
+            tb_manager.log_var('d_loss_fake', epoch, minibatch_index, d_loss[0])
 
             # Training generator on X data, with Y labels
             # noise = np.random.normal(0, 1, (batch_size, 256))
 
             # Train generator to generate real
             g_loss = d_on_g.train_on_batch(noise, real_labels)
-            g_loss_summary.value[0].simple_value = g_loss
-            tb_writer.add_summary(g_loss_summary, (epoch * number_of_batches) + minibatch_index)
-            tb_writer.flush()
+            tb_manager.log_var('g_loss', epoch, minibatch_index, g_loss)
 
-            print('epoch [%d/%d] :: batch [%d/%d] :: fake_acc = %.1f%% :: real_acc = %.1f%% :: ' \
+            print('epoch [%d/%d] :: batch [%d/%d] :: fake_acc = %.1f%% :: real_acc = %.1f%% :: '
                   'fake_loss = %s :: real_loss = %s :: gen_loss = %s' % (
-                      epoch, epochs, minibatch_index, number_of_batches, d_fake_acc * 100, d_real_acc * 100,
-                      d_fake_loss, d_real_loss, g_loss))
+                      epoch, epochs, minibatch_index, number_of_batches, d_acc_fake * 100, d_acc_real * 100,
+                      d_loss_fake, d_loss_real, g_loss))
 
             # Save models
             time_since_save = time.time() - last_save_time

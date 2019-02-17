@@ -122,7 +122,7 @@ def test(version_name, samples):
 
 
 def main():
-    train(epochs=50, batch_size=1, size=64, world_count=20000)
+    train(epochs=50, batch_size=15, size=64, world_count=20000)
     # test('ver15', 15)
 
 

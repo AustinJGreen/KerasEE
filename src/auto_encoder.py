@@ -1,11 +1,9 @@
-import math
 import os
 
 import keras
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.core import Activation
 from keras.layers.normalization import BatchNormalization
@@ -15,6 +13,7 @@ from keras.optimizers import Adam
 
 import utils
 from loadworker import load_worlds, load_world
+from tbmanager import TensorboardManager
 
 
 def autoencoder_model(size):
@@ -131,16 +130,6 @@ def train(epochs, batch_size, world_count, version_name=None):
     print('Saving model images...')
     keras.utils.plot_model(ae, to_file='%s\\autoencoder.png' % version_dir, show_shapes=True, show_layer_names=True)
 
-    # Set up tensorboard
-    print('Setting up tensorboard...')
-    tb_callback = keras.callbacks.TensorBoard(log_dir=graph_version_dir, write_graph=True)
-    tb_callback.set_model(ae)
-
-    # before training init writer (for tensorboard log) / model
-    tb_writer = tf.summary.FileWriter(logdir=graph_version_dir)
-    ae_loss = tf.Summary()
-    ae_loss.value.add(tag='ae_loss', simple_value=None)
-
     # Load Data
     print('Loading worlds...')
     x_train = load_worlds(world_count, '%s\\worlds\\' % res_dir, (112, 112), block_forward)
@@ -148,6 +137,10 @@ def train(epochs, batch_size, world_count, version_name=None):
     # Start Training loop
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
+
+    # Set up tensorboard
+    print('Setting up tensorboard...')
+    tb_manager = TensorboardManager(graph_version_dir, number_of_batches)
 
     for epoch in range(initial_epoch, epochs):
 
@@ -164,6 +157,7 @@ def train(epochs, batch_size, world_count, version_name=None):
             # Get real set of images
             world_batch = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
 
+            # Train
             loss = ae.train_on_batch(world_batch, world_batch)
 
             # Save snapshot of generated images on last batch
@@ -188,15 +182,14 @@ def train(epochs, batch_size, world_count, version_name=None):
                                              '%s\\actual%s.png' % (cur_previews_dir, batchImage))
 
             # Write loss
-            if not math.isnan(loss):
-                ae_loss.value[0].simple_value = loss
-                tb_writer.add_summary(ae_loss, (epoch * number_of_batches) + minibatch_index)
+            tb_manager.log_var('ae_loss', epoch, minibatch_index, loss)
 
             print('epoch [%d/%d] :: batch [%d/%d] :: loss = %f' % (
                 epoch, epochs, minibatch_index, number_of_batches, loss))
 
             # Save models
             if minibatch_index % 100 == 99 or minibatch_index == number_of_batches - 1:
+                print('Saving models...')
                 try:
                     ae.save('%s\\autoencoder.h5' % cur_models_dir)
                     ae.save_weights('%s\\autoencoder.weights' % cur_models_dir)
