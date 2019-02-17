@@ -5,8 +5,8 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 from keras.layers import Dense, SpatialDropout2D
+from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Conv2D
-from keras.layers.core import Activation
 from keras.layers.normalization import BatchNormalization
 from keras.layers.pooling import GlobalAveragePooling2D, MaxPooling2D
 from keras.models import Sequential, load_model
@@ -29,14 +29,14 @@ def build_classifier(size):
             model.add(Conv2D(filters=f, kernel_size=7, strides=1, padding='same'))
 
         model.add(BatchNormalization(momentum=0.8, axis=3))
-        model.add(Activation('relu'))
+        model.add(LeakyReLU())
 
         model.add(Conv2D(filters=f, kernel_size=3, strides=1, padding='same'))
         model.add(BatchNormalization(momentum=0.8, axis=3))
-        model.add(Activation('relu'))
+        model.add(LeakyReLU())
 
         model.add(MaxPooling2D(pool_size=(2, 2)))
-        model.add(SpatialDropout2D(0.2))
+        model.add(SpatialDropout2D(0.15))
 
         f = f * 2
         s = s // 2
@@ -74,7 +74,7 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     print('Building model from scratch...')
     c_optim = Adam(lr=0.0001)
 
-    size = 112
+    size = 64
     c = build_classifier(size)
     # c = build_resnet50(1)
     # c = build_wide_resnet(input_dim=(size, size, 10), nb_classes=1, N=2, k=1, dropout=0.1)
@@ -113,7 +113,7 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     callback_list = [check_best_acc, latest_h5_callback, latest_weights_callback, tb_callback]
 
     # Train model
-    c.fit(x, y, batch_size, epochs, initial_epoch=initial_epoch, callbacks=callback_list, validation_split=0)
+    c.fit(x, y, batch_size, epochs, initial_epoch=initial_epoch, callbacks=callback_list, validation_split=0.2)
 
 
 def predict(network_ver, dict_src_name):
@@ -318,11 +318,11 @@ def save_current_labels(current_label_dict):
 
 
 def main():
-    # train(epochs=18, batch_size=32, world_count=30000, dict_src_name='pro_labels_b')
+    train(epochs=100, batch_size=32, world_count=125000, dict_src_name='pro_labels_b')
     # predict('ver9', dict_src_name='pro_labels_b')
     # add_training_data('pro_labels_b')
     # predict_sample_matlab('ver38', dict_src_name='pro_labels_b', cols=3, rows=3)
-    save_current_labels('pro_labels_b')
+    # save_current_labels('pro_labels_b')
 
 
 if __name__ == '__main__':

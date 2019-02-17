@@ -24,7 +24,11 @@ def autoencoder_model(size):
     s = size
 
     while s > 7:
-        model.add(Conv2D(f, kernel_size=5, strides=1, padding='same', input_shape=(size, size, 10)))
+        if s == size:
+            model.add(Conv2D(f, kernel_size=5, strides=1, padding='same', input_shape=(size, size, 10)))
+        else:
+            model.add(Conv2D(f, kernel_size=5, strides=1, padding='same'))
+
         model.add(BatchNormalization(momentum=0.8))
         model.add(Activation('relu'))
 

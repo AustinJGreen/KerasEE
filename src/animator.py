@@ -1,25 +1,23 @@
 import os
 
-import keras.backend as K
 import numpy as np
-import tensorflow as tf
 from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import Conv2DTranspose
+from keras.layers.convolutional import Conv2DTranspose, Conv2D
 from keras.layers.core import Dense, Reshape, Activation
 from keras.layers.merge import Concatenate
 from keras.layers.normalization import BatchNormalization
+from keras.layers.pooling import MaxPooling2D
 from keras.models import Input
-from keras.models import Model, Sequential
-from keras.optimizers import Adam
+from keras.models import Model, Sequential, load_model
 
 import utils
-from loadworker import load_worlds
-from translator import build_translator
+from loadworker import load_worlds_with_minimaps
+from pro_classifier import build_classifier
 
 
-def build_animator(size):
+def build_pro_animator(size):
     # Takes in latent input, and target minimap colors
-    # Outputs a real world whose minimap is supposed to reflect the target minimap
+    # Outputs a pro looking world whose minimap also reflects the target minimap
 
     # Calculate starting kernel size
     n = size
@@ -63,18 +61,73 @@ def build_animator(size):
     animator_model = Model(inputs=[latent_input, target_input], outputs=animator)
     animator_model.summary()
 
+    # Build model to train animator to produce maps with the correct minimap
     translator_model = build_translator(size)
     translator_model.trainable = False
+    # TODO: Load translator model
 
-    animator_trainer_model = Sequential()
-    animator_trainer_model.add(animator_model)
-    animator_trainer_model.add(translator_model)
-    animator_trainer_model.summary()
+    animator_minimap_model = translator_model(animator_model)
 
-    return animator_trainer_model, animator_model
+    # Build model to train animator to produce good looking maps
+    classifier_model = build_classifier(size)
+    classifier_model.trainable = False
+    # TODO: Load pro model
+
+    animator_pro_model = Sequential()
+    animator_pro_model.add(animator_model)
+    animator_pro_model.add(classifier_model)
+    animator_pro_model.summary()
+
+    return animator_minimap_model, animator_pro_model, animator_model
 
 
-def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
+def build_basic_animator(size):
+    # Takes in latent input, and target minimap colors
+    # Outputs a real world whose minimap is supposed to reflect the target minimap
+
+    animator_input = Input(shape=(size, size, 3))
+    animator = animator_input
+
+    f = 64
+    s = size
+    while s > 7:
+        animator = Conv2D(f, kernel_size=5, strides=1, padding='same')(animator)
+        animator = BatchNormalization(momentum=0.8)(animator)
+        animator = Activation('relu')(animator)
+
+        animator = Conv2D(f, kernel_size=5, strides=1, padding='same')(animator)
+        animator = BatchNormalization(momentum=0.8)(animator)
+        animator = Activation('relu')(animator)
+
+        animator = MaxPooling2D(pool_size=(2, 2))(animator)
+
+        f = f * 2
+        s = s // 2
+
+    while s < size:
+        f = f // 2
+
+        animator = Conv2DTranspose(f, kernel_size=5, strides=1, padding='same')(animator)
+        animator = BatchNormalization(momentum=0.8)(animator)
+        animator = Activation('relu')(animator)
+
+        animator = Conv2DTranspose(f, kernel_size=5, strides=2, padding='same')(animator)
+        animator = BatchNormalization(momentum=0.8)(animator)
+        animator = Activation('relu')(animator)
+
+        s = s * 2
+
+    animator = Conv2DTranspose(10, kernel_size=5, strides=1, padding='same')(animator)
+    animator = Activation('sigmoid')(animator)
+
+    animator_model = Model(inputs=animator_input, outputs=animator)
+    animator_model.summary()
+    animator_model.trainable = True
+
+    return animator_model
+
+
+def train(epochs, batch_size, world_count, sz=64, version_name=None):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
@@ -97,7 +150,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     utils.save_source_to_dir(version_dir)
 
     print('Loading minimap values...')
-    minimap_values = utils.load_minimap_values(res_dir)
+    mm_values = utils.load_minimap_values(res_dir)
 
     print('Loading block images...')
     block_images = utils.load_block_images(res_dir)
@@ -106,24 +159,23 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_colored')
 
     print('Building model from scratch...')
-    optim = Adam(lr=0.0001)
+    animator = build_basic_animator(112)
+    translator = load_model('%s\\translator\\ver15\\models\\best_loss.h5' % all_models_dir)
+    translator.trainable = False
 
-    animator, c_input = build_animator(64)
-
-    animator.summary()
-    animator.compile(loss='mse', optimizer=optim)
+    animator_minimap = Sequential()
+    animator_minimap.add(animator)
+    animator_minimap.add(translator)
+    animator_minimap.summary()
+    animator_minimap.compile(loss='mse', optimizer='adam')
 
     print('Loading worlds...')
-    x_train = load_worlds(world_count, '%s\\worlds\\' % res_dir, (112, 112), block_forward)
-    y_none = np.zeros((batch_size, 112, 112, 10))
+    _, x_train = load_worlds_with_minimaps(world_count, '%s\\worlds\\' % res_dir, (sz, sz), block_forward, mm_values)
 
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
 
-    # Initialize tables for Hashtable tensors
-    K.get_session().run(tf.tables_initializer())
-
-    for epoch in range(initial_epoch, epochs):
+    for epoch in range(epochs):
 
         # Create directories for current epoch
         cur_previews_dir = utils.check_or_create_local_path('epoch%s' % epoch, previews_dir)
@@ -133,28 +185,18 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         np.random.shuffle(x_train)
 
         for minibatch_index in range(number_of_batches):
-            worlds = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
-            minimaps = get_minimaps(worlds, block_backward, minimap_values)
+            minimaps = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
 
-            if minibatch_index == number_of_batches - 1:
-                generated = animator.predict(minimaps)
+            # Generate random noise for animator
+            noise = np.random.normal(0, 1, size=(batch_size, 128))
 
-                for batchImage in range(batch_size):
-                    generated_world = generated[batchImage]
-                    decoded_generated = utils.decode_world_sigmoid(block_backward, generated_world)
-                    utils.save_world_preview(block_images, decoded_generated,
-                                             '%s\\generated%s.png' % (cur_previews_dir, batchImage))
-
-                    decoded_world = utils.decode_world_sigmoid(block_backward, worlds[batchImage])
-                    utils.save_world_minimap(minimap_values, decoded_world,
-                                             '%s\\target%s.png' % (cur_previews_dir, batchImage))
-
-            loss = animator.train_on_batch(minimaps, minimaps)
-            print('epoch = %s, loss = %s' % (epoch, loss))
+            # Train animator
+            minimap_loss = animator_minimap.train_on_batch(minimaps, minimaps)
+            print(f"Epoch = {epoch}, Loss = {minimap_loss}")
 
 
 def main():
-    train(epochs=13, batch_size=32, world_count=1000)
+    train(epochs=13, batch_size=10, world_count=1000, sz=112)
     # predict('ver9', dict_src_name='pro_labels')
 
 
