@@ -1,12 +1,14 @@
+import math
 import os
 
+import keras
 import numpy as np
+import tensorflow as tf
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Conv2DTranspose, Conv2D
 from keras.layers.core import Dense, Reshape, Activation
 from keras.layers.merge import Concatenate
 from keras.layers.normalization import BatchNormalization
-from keras.layers.pooling import MaxPooling2D
 from keras.models import Input
 from keras.models import Model, Sequential, load_model
 
@@ -86,38 +88,10 @@ def build_basic_animator(size):
     # Outputs a real world whose minimap is supposed to reflect the target minimap
 
     animator_input = Input(shape=(size, size, 3))
-    animator = animator_input
-
-    f = 64
-    s = size
-    while s > 7:
-        animator = Conv2D(f, kernel_size=5, strides=1, padding='same')(animator)
-        animator = BatchNormalization(momentum=0.8)(animator)
-        animator = Activation('relu')(animator)
-
-        animator = Conv2D(f, kernel_size=5, strides=1, padding='same')(animator)
-        animator = BatchNormalization(momentum=0.8)(animator)
-        animator = Activation('relu')(animator)
-
-        animator = MaxPooling2D(pool_size=(2, 2))(animator)
-
-        f = f * 2
-        s = s // 2
-
-    while s < size:
-        f = f // 2
-
-        animator = Conv2DTranspose(f, kernel_size=5, strides=1, padding='same')(animator)
-        animator = BatchNormalization(momentum=0.8)(animator)
-        animator = Activation('relu')(animator)
-
-        animator = Conv2DTranspose(f, kernel_size=5, strides=2, padding='same')(animator)
-        animator = BatchNormalization(momentum=0.8)(animator)
-        animator = Activation('relu')(animator)
-
-        s = s * 2
-
-    animator = Conv2DTranspose(10, kernel_size=5, strides=1, padding='same')(animator)
+    animator = Conv2D(filters=2048, kernel_size=(1, 1), strides=(1, 1), padding='same')(animator_input)
+    # animator = BatchNormalization(momentum=0.8, axis=3)(animator)
+    animator = Activation('relu')(animator)
+    animator = Conv2D(filters=10, kernel_size=(1, 1), strides=(1, 1), padding='same')(animator)
     animator = Activation('sigmoid')(animator)
 
     animator_model = Model(inputs=animator_input, outputs=animator)
@@ -160,17 +134,32 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
 
     print('Building model from scratch...')
     animator = build_basic_animator(112)
+    animator.compile(loss='mse', optimizer='adam')
+
     translator = load_model('%s\\translator\\ver15\\models\\best_loss.h5' % all_models_dir)
     translator.trainable = False
 
     animator_minimap = Sequential()
     animator_minimap.add(animator)
     animator_minimap.add(translator)
-    animator_minimap.summary()
     animator_minimap.compile(loss='mse', optimizer='adam')
 
+    print('Saving model images...')
+    keras.utils.plot_model(animator, to_file='%s\\animator.png' % version_dir, show_shapes=True, show_layer_names=True)
+
+    # Set up tensorboard
+    print('Setting up tensorboard...')
+    tb_callback = keras.callbacks.TensorBoard(log_dir=graph_version_dir, write_graph=True)
+    tb_callback.set_model(animator_minimap)
+
+    # before training init writer (for tensorboard log) / model
+    tb_writer = tf.summary.FileWriter(logdir=graph_version_dir)
+    mm_loss = tf.Summary()
+    mm_loss.value.add(tag='ae_loss', simple_value=None)
+
     print('Loading worlds...')
-    _, x_train = load_worlds_with_minimaps(world_count, '%s\\worlds\\' % res_dir, (sz, sz), block_forward, mm_values)
+    y_train, x_train = load_worlds_with_minimaps(world_count, '%s\\worlds\\' % res_dir, (sz, sz), block_forward,
+                                                 mm_values)
 
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
@@ -186,17 +175,41 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
 
         for minibatch_index in range(number_of_batches):
             minimaps = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
+            actual = y_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
+            if minibatch_index == number_of_batches - 1:
+                # Save previews
+                print('Saving previews...')
+                worlds = animator.predict(minimaps)
+                for i in range(batch_size):
+                    world_decoded = utils.decode_world_sigmoid(block_backward, worlds[i])
+                    utils.save_world_preview(block_images, world_decoded, '%s\\animated%s.png' % (cur_previews_dir, i))
 
-            # Generate random noise for animator
-            noise = np.random.normal(0, 1, size=(batch_size, 128))
+                    mm_decoded = utils.decode_world_minimap(minimaps[i])
+                    utils.save_rgb_map(mm_decoded, '%s\\target%s.png' % (cur_previews_dir, i))
 
             # Train animator
+            # world_loss = animator.train_on_batch(minimaps, actual)
             minimap_loss = animator_minimap.train_on_batch(minimaps, minimaps)
-            print(f"Epoch = {epoch}, Loss = {minimap_loss}")
+
+            # Write loss
+            if not math.isnan(minimap_loss):
+                mm_loss.value[0].simple_value = minimap_loss
+                tb_writer.add_summary(mm_loss, (epoch * number_of_batches) + minibatch_index)
+
+            print(f"Epoch = {epoch}/{epochs} :: Batch = {minibatch_index}/{number_of_batches} "
+                  f":: MMLoss = {minimap_loss}")
+
+            # Save models
+            if minibatch_index % 100 == 99 or minibatch_index == number_of_batches - 1:
+                try:
+                    animator.save('%s\\animator.h5' % cur_models_dir)
+                    animator.save_weights('%s\\animator.weights' % cur_models_dir)
+                except ImportError:
+                    print('Failed to save data.')
 
 
 def main():
-    train(epochs=13, batch_size=10, world_count=1000, sz=112)
+    train(epochs=13, batch_size=10, world_count=10000, sz=112)
     # predict('ver9', dict_src_name='pro_labels')
 
 
