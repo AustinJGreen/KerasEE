@@ -17,7 +17,7 @@ from loadworker import load_world, load_worlds_with_labels, load_worlds_with_fil
 
 
 def build_classifier(size):
-    model = Sequential()
+    model = Sequential(name='pro_classifier')
 
     f = 64
     s = size
@@ -57,7 +57,7 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     no_version = version_name is None
     if no_version:
         latest = utils.get_latest_version(model_dir)
-        version_name = 'ver%s' % (latest + 1)
+        version_name = f'ver{latest + 1}'
 
     version_dir = utils.check_or_create_local_path(version_name, model_dir)
     graph_dir = utils.check_or_create_local_path('graph', model_dir)
@@ -86,23 +86,23 @@ def train(epochs, batch_size, world_count, dict_src_name, version_name=None, ini
     label_dict = utils.load_label_dict(res_dir, dict_src_name)
 
     print('Loading worlds...')
-    x, y_raw = load_worlds_with_labels(world_count, '%s\\worlds\\' % res_dir, label_dict, (size, size),
+    x, y_raw = load_worlds_with_labels(world_count, f'{res_dir}\\worlds\\', label_dict, (size, size),
                                        block_forward)
 
     y = utils.convert_labels_binary(y_raw, epsilon=0)
 
     # Create callback for automatically saving best model based on highest regular accuracy
-    check_best_acc = keras.callbacks.ModelCheckpoint('%s\\best_acc.h5' % model_save_dir, monitor='acc', verbose=0,
+    check_best_acc = keras.callbacks.ModelCheckpoint(f'{model_save_dir}\\best_acc.h5', monitor='acc', verbose=0,
                                                      save_best_only=True, save_weights_only=False, mode='max',
                                                      period=1)
 
-    # Create callback for automatically saving lastest model so training can be resumed. Saves every epoch
-    latest_h5_callback = keras.callbacks.ModelCheckpoint('%s\\latest.h5' % model_save_dir, verbose=0,
+    # Create callback for automatically saving latest model so training can be resumed. Saves every epoch
+    latest_h5_callback = keras.callbacks.ModelCheckpoint(f'{model_save_dir}\\latest.h5', verbose=0,
                                                          save_best_only=False,
                                                          save_weights_only=False, mode='auto', period=1)
 
-    # Create callback for automatically saving lastest weights so training can be resumed. Saves every epoch
-    latest_weights_callback = keras.callbacks.ModelCheckpoint('%s\\latest.weights' % model_save_dir, verbose=0,
+    # Create callback for automatically saving latest weights so training can be resumed. Saves every epoch
+    latest_weights_callback = keras.callbacks.ModelCheckpoint(f'{model_save_dir}\\latest.weights', verbose=0,
                                                               save_best_only=False,
                                                               save_weights_only=True, mode='auto', period=1)
 
@@ -131,7 +131,7 @@ def predict(network_ver, dict_src_name):
     notpro_dir = utils.check_or_create_local_path('notpro', classifications_dir)
 
     print('Loading model...')
-    classifier = load_model('%s\\latest.h5' % model_save_dir)
+    classifier = load_model(f'{model_save_dir}\\latest.h5')
 
     print('Loading block images...')
     block_images = utils.load_block_images(res_dir)
@@ -139,7 +139,7 @@ def predict(network_ver, dict_src_name):
     print('Loading encoding dictionaries...')
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
-    x_data, x_files = load_worlds_with_files(5000, '%s\\worlds\\' % res_dir, (112, 112), block_forward)
+    x_data, x_files = load_worlds_with_files(5000, f'{res_dir}\\worlds\\', (112, 112), block_forward)
 
     x_labeled = utils.load_label_dict(res_dir, dict_src_name)
 
@@ -161,12 +161,12 @@ def predict(network_ver, dict_src_name):
 
             prediction = y_batch[world]
 
-            world_data = utils.load_world_data_ver3('%s\\worlds\\%s.world' % (res_dir, world_id))
+            world_data = utils.load_world_data_ver3(f'{res_dir}\\worlds\\{world_id}.world')
 
             if prediction[0] < 0.5:
-                utils.save_world_preview(block_images, world_data, '%s\\%s.png' % (notpro_dir, world_id))
+                utils.save_world_preview(block_images, world_data, f'{notpro_dir}\\{world_id}.png')
             else:
-                utils.save_world_preview(block_images, world_data, '%s\\%s.png' % (pro_dir, world_id))
+                utils.save_world_preview(block_images, world_data, f'{pro_dir}\\{world_id}.png')
 
 
 def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
@@ -181,7 +181,7 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
     utils.delete_files_in_path(plots_dir)
 
     print('Loading model...')
-    classifier = load_model('%s\\latest.h5' % model_save_dir)
+    classifier = load_model(f'{model_save_dir}\\latest.h5')
 
     print('Loading block images...')
     block_images = utils.load_block_images(res_dir)
@@ -190,7 +190,7 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     x_labeled = utils.load_label_dict(res_dir, dict_src_name)
-    x_worlds = os.listdir('%s\\worlds\\' % res_dir)
+    x_worlds = os.listdir(f'{res_dir}\\worlds\\')
     np.random.shuffle(x_worlds)
 
     world_size = classifier.input_shape[1]
@@ -205,13 +205,12 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
     pro_score_floor = 0
     pro_score_ceiling = 1.0 / (rows * cols)
     for world_filename in x_worlds:
-        world_file = os.path.join('%s\\worlds\\' % res_dir, world_filename)
+        world_file = os.path.join(f'{res_dir}\\worlds\\', world_filename)
         world_id = utils.get_world_id(world_filename)
         if world_id not in x_labeled:
 
             # Load world and save preview
-            encoded_regions = load_world(world_file, (world_size, world_size), block_forward, overlap_x=1,
-                                         overlap_y=1)
+            encoded_regions = load_world(world_file, (world_size, world_size), block_forward)
             if len(encoded_regions) == 0:
                 continue
 
@@ -225,13 +224,13 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
                 continue
 
             decoded_region = utils.decode_world_sigmoid(block_backward, encoded_regions[0])
-            utils.save_world_preview(block_images, decoded_region, '%s\\preview%s.png' % (plots_dir, sample_num))
+            utils.save_world_preview(block_images, decoded_region, f'{plots_dir}\\preview{sample_num}.png')
 
             pro_score_floor += 1.0 / (rows * cols)
             pro_score_ceiling += 1.0 / (rows * cols)
 
             # Create plot
-            img = mpimg.imread('%s\\preview%s.png' % (plots_dir, sample_num))
+            img = mpimg.imread(f'{plots_dir}\\preview{sample_num}.png')
 
             subplt = fig.add_subplot(rows, cols, sample_num + 1)
             subplt.set_title(world_id)
@@ -245,15 +244,15 @@ def predict_sample_matlab(network_ver, dict_src_name, cols, rows):
             plt.yticks(positions, labels)
             plt.imshow(img)
 
-            print('Adding plot %s of %s' % (sample_num + 1, rows * cols))
+            print(f'Adding plot {sample_num + 1} of {rows * cols}')
 
             sample_num += 1
-            if sample_num >= cols * rows:
+            if sample_num >= rows * cols:
                 break
 
     print('Saving figure...')
     fig.tight_layout()
-    fig.savefig('%s\\plot.png' % plots_dir, transparent=True)
+    fig.savefig(f'{plots_dir}\\plot.png', transparent=True)
 
 
 def add_training_data(current_label_dict):
@@ -301,20 +300,20 @@ def save_current_labels(current_label_dict):
     for x_world in x_labeled:
         label = x_labeled[x_world]
 
-        if os.path.exists('%s\\%s.png' % (pro_dir, x_world)) or os.path.exists('%s\\%s.png' % (notpro_dir, x_world)):
+        if os.path.exists(f'{pro_dir}\\{x_world}.png') or os.path.exists(f'{notpro_dir}\\{x_world}.png'):
             saved += 1
             continue
 
-        world_file = '%s\\worlds\\%s.world' % (res_dir, x_world)
+        world_file = f'{res_dir}\\worlds\\{x_world}.world'
         world_data = utils.load_world_data_ver3(world_file)
 
         if label == 1:
-            utils.save_world_preview(block_images, world_data, '%s\\%s.png' % (pro_dir, x_world))
+            utils.save_world_preview(block_images, world_data, f'{pro_dir}\\{x_world}.png')
         else:
-            utils.save_world_preview(block_images, world_data, '%s\\%s.png' % (notpro_dir, x_world))
+            utils.save_world_preview(block_images, world_data, f'{notpro_dir}\\{x_world}.png')
 
         saved += 1
-        print('Saved %s of %s world previews' % (saved, len(x_labeled)))
+        print(f'Saved {saved} of {len(x_labeled)} world previews')
 
 
 def main():

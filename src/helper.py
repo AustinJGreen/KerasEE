@@ -3,7 +3,6 @@ import os
 import keras
 import keras.backend as K
 import numpy as np
-import tensorflow as tf
 from keras.engine import Input
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
 from keras.layers.core import Activation, Dense, Reshape, Permute, Flatten, Lambda
@@ -15,6 +14,7 @@ from keras.optimizers import Adam
 
 import utils
 from loadworker import load_worlds
+from tbmanager import TensorboardManager
 
 
 def build_encoder_layers(encoder_input, input_size):
@@ -128,7 +128,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     no_version = version_name is None
     if no_version:
         latest = utils.get_latest_version(model_dir)
-        version_name = 'ver%s' % (latest + 1)
+        version_name = f'ver{latest + 1}'
 
     version_dir = utils.check_or_create_local_path(version_name, model_dir)
     graph_dir = utils.check_or_create_local_path('graph', model_dir)
@@ -166,46 +166,30 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     helper_feedback = build_helper_feedback_model(helper, judge, 32)
     helper_feedback.compile(loss='binary_crossentropy', optimizer=helper_optimizer)
 
-    # before training init writer (for tensorboard log) / model
-    tb_writer = tf.summary.FileWriter(logdir=graph_version_dir)
-    j_loss_summary = tf.Summary()
-    j_loss_summary.value.add(tag='j_loss', simple_value=None)
-
-    j_acc_summary = tf.Summary()
-    j_acc_summary.value.add(tag='j_acc', simple_value=None)
-
-    j_real_acc_summary = tf.Summary()
-    j_real_acc_summary.value.add(tag='j_real_acc', simple_value=None)
-
-    j_fake_acc_summary = tf.Summary()
-    j_fake_acc_summary.value.add(tag='j_fake_acc', simple_value=None)
-
-    h_loss_summary = tf.Summary()
-    h_loss_summary.value.add(tag='h_loss', simple_value=None)
-
     # Load Data
     print('Loading worlds...')
-    x_train = load_worlds(world_count, '%s\\worlds\\' % res_dir, (32, 32), block_forward)
+    x_train = load_worlds(world_count, f'{res_dir}\\worlds\\', (32, 32), block_forward)
 
     # Start Training loop
     world_count = x_train.shape[0]
-    number_of_batches = (world_count - (world_count % batch_size)) // batch_size
+    batch_cnt = (world_count - (world_count % batch_size)) // batch_size
+    tb_manager = TensorboardManager(graph_version_dir, batch_cnt)
 
     for epoch in range(initial_epoch, epochs):
 
-        print('Epoch = %s ' % epoch)
+        print(f'Epoch = {epoch} ')
         # Create directories for current epoch
-        cur_worlds_cur = utils.check_or_create_local_path('epoch%s' % epoch, worlds_dir)
-        cur_previews_dir = utils.check_or_create_local_path('epoch%s' % epoch, previews_dir)
-        cur_models_dir = utils.check_or_create_local_path('epoch%s' % epoch, model_save_dir)
+        cur_worlds_cur = utils.check_or_create_local_path(f'epoch{epoch}', worlds_dir)
+        cur_previews_dir = utils.check_or_create_local_path(f'epoch{epoch}', previews_dir)
+        cur_models_dir = utils.check_or_create_local_path(f'epoch{epoch}', model_save_dir)
 
         print('Shuffling data...')
         np.random.shuffle(x_train)
 
-        for minibatch_index in range(number_of_batches):
+        for batch in range(batch_cnt):
 
             # Get real set of worlds
-            world_batch = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
+            world_batch = x_train[batch * batch_size:(batch + 1) * batch_size]
             world_batch_masked, world_masks = utils.mask_batch_low(world_batch)
             world_masks_reshaped = np.reshape(world_masks[:, :, :, 0], (batch_size, 32 * 32, 1))
 
@@ -221,50 +205,36 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             j_real = judge.train_on_batch([world_batch_masked, world_batch], real_labels)
             j_fake = judge.train_on_batch([world_batch_masked, generated[1]], fake_labels)
 
-            j_real_acc_summary.value[0].simple_value = j_real[1]
-            tb_writer.add_summary(j_real_acc_summary, (epoch * number_of_batches) + minibatch_index)
-
-            j_fake_acc_summary.value[0].simple_value = j_fake[1]
-            tb_writer.add_summary(j_fake_acc_summary, (epoch * number_of_batches) + minibatch_index)
-
-            j_acc_summary.value[0].simple_value = (j_real[1] + j_fake[1]) / 2
-            tb_writer.add_summary(j_acc_summary, (epoch * number_of_batches) + minibatch_index)
-
-            j_loss_summary.value[0].simple_value = (j_real[0] + j_fake[0]) / 2
-            tb_writer.add_summary(j_loss_summary, (epoch * number_of_batches) + minibatch_index)
+            tb_manager.log_var('j_loss_real', epoch, batch, j_real[0])
+            tb_manager.log_var('j_loss_fake', epoch, batch, j_fake[0])
+            tb_manager.log_var('j_acc_real', epoch, batch, j_real[1])
+            tb_manager.log_var('j_acc_fake', epoch, batch, j_fake[1])
 
             judge.trainable = False
             h_loss = helper_feedback.train_on_batch([world_batch_masked, noise], real_labels)
+            tb_manager.log_var('h_loss', epoch, batch, h_loss)
 
-            h_loss_summary.value[0].simple_value = h_loss
-            tb_writer.add_summary(h_loss_summary, (epoch * number_of_batches) + minibatch_index)
-            tb_writer.flush()
+            print(f'epoch [{epoch}/{epochs}] :: batch [{batch}/{batch_cnt}] :: fake_loss = {j_fake[0]} :: fake_acc = '
+                  f'{j_fake[1]} :: real_loss = {j_real[0]} :: real_acc = {j_real[1]} :: h_loss = {h_loss}')
 
-            print(
-                'epoch [%d/%d] :: batch [%d/%d] :: j_fake_loss = %f :: j_fake_acc = %.1f%% :: j_real_loss = %f :: j_real_acc = %.1f%% :: h_loss = %f' % (
-                    epoch, epochs, minibatch_index, number_of_batches, j_fake[0], j_fake[1] * 100, j_real[0],
-                    j_real[1] * 100, h_loss))
-
-            if minibatch_index % 1000 == 999 or minibatch_index == number_of_batches - 1:
+            if batch % 1000 == 999 or batch == batch_cnt - 1:
 
                 # Save generated batch
                 for i in range(batch_size):
                     actual_world = world_batch_masked[i]
                     a_decoded = utils.decode_world_sigmoid(block_backward, actual_world)
-                    utils.save_world_preview(block_images, a_decoded,
-                                             '%s\\actual%s.png' % (cur_previews_dir, i))
+                    utils.save_world_preview(block_images, a_decoded, f'{cur_previews_dir}\\actual{i}.png')
 
                     gen_world = generated[1][i]
                     decoded = utils.decode_world_sigmoid(block_backward, gen_world)
-                    utils.save_world_preview(block_images, decoded,
-                                             '%s\\preview%s.png' % (cur_previews_dir, i))
+                    utils.save_world_preview(block_images, decoded, f'{cur_previews_dir}\\preview{i}.png')
 
                 # Save models
                 try:
-                    judge.save('%s\\judge.h5' % cur_models_dir)
-                    helper.save('%s\\helper.h5' % cur_models_dir)
-                    judge.save_weights('%s\\judge.weights' % cur_models_dir)
-                    helper.save_weights('%s\\helper.weights' % cur_models_dir)
+                    judge.save(f'{cur_models_dir}\\judge.h5')
+                    helper.save(f'{cur_models_dir}\\helper.h5')
+                    judge.save_weights(f'{cur_models_dir}\\judge.weights')
+                    helper.save_weights(f'{cur_models_dir}\\helper.weights')
                 except ImportError:
                     print('Failed to save data.')
 

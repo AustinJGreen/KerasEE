@@ -70,7 +70,7 @@ def train(epochs, batch_size, world_count, version_name=None):
     no_version = version_name is None
     if no_version:
         latest = utils.get_latest_version(model_dir)
-        version_name = 'ver%s' % (latest + 1)
+        version_name = f'ver{latest + 1}'
 
     version_dir = utils.check_or_create_local_path(version_name, model_dir)
     graph_dir = utils.check_or_create_local_path('graph', model_dir)
@@ -80,8 +80,8 @@ def train(epochs, batch_size, world_count, version_name=None):
     previews_dir = utils.check_or_create_local_path('previews', version_dir)
     model_save_dir = utils.check_or_create_local_path('models', version_dir)
 
-    lastest_epoch = utils.get_latest_epoch(model_save_dir)
-    initial_epoch = lastest_epoch + 1
+    latest_epoch = utils.get_latest_epoch(model_save_dir)
+    initial_epoch = latest_epoch + 1
 
     print('Saving source...')
     utils.save_source_to_dir(version_dir)
@@ -98,15 +98,15 @@ def train(epochs, batch_size, world_count, version_name=None):
 
     # Try to load full model, otherwise try to load weights
     loaded_model = False
-    if not no_version and lastest_epoch != -1:
-        if os.path.exists('%s\\models\\epoch%s\\autoencoder.h5' % (version_dir, lastest_epoch)):
+    if not no_version and latest_epoch != -1:
+        if os.path.exists(f'{version_dir}\\models\\epoch{latest_epoch}\\autoencoder.h5'):
             print('Found models.')
-            ae = load_model('%s\\models\\epoch%s\\autoencoder.h5' % (version_dir, lastest_epoch))
+            ae = load_model(f'{version_dir}\\models\\epoch{latest_epoch}\\autoencoder.h5')
             loaded_model = True
-        elif os.path.exists('%s\\models\\epoch%s\\autoencoder.weights' % (version_dir, lastest_epoch)):
+        elif os.path.exists(f'{version_dir}\\models\\epoch{latest_epoch}\\autoencoder.weights'):
             print('Found weights.')
             ae = autoencoder_model(112)
-            ae.load_weights('%s\\models\\epoch%s\\autoencoder.weights' % (version_dir, lastest_epoch))
+            ae.load_weights(f'{version_dir}\\models\\epoch{latest_epoch}\\autoencoder.weights')
 
             print('Compiling model...')
             ae_optim = Adam(lr=0.0001)
@@ -128,71 +128,70 @@ def train(epochs, batch_size, world_count, version_name=None):
         utils.delete_files_in_path(previews_dir)
 
     print('Saving model images...')
-    keras.utils.plot_model(ae, to_file='%s\\autoencoder.png' % version_dir, show_shapes=True, show_layer_names=True)
+    keras.utils.plot_model(ae, to_file=f'{version_dir}\\autoencoder.png', show_shapes=True, show_layer_names=True)
 
     # Load Data
     print('Loading worlds...')
-    x_train = load_worlds(world_count, '%s\\worlds\\' % res_dir, (112, 112), block_forward)
+    x_train = load_worlds(world_count, f'{res_dir}\\worlds\\', (112, 112), block_forward)
 
     # Start Training loop
     world_count = x_train.shape[0]
-    number_of_batches = (world_count - (world_count % batch_size)) // batch_size
+    batch_cnt = (world_count - (world_count % batch_size)) // batch_size
 
     # Set up tensorboard
     print('Setting up tensorboard...')
-    tb_manager = TensorboardManager(graph_version_dir, number_of_batches)
+    tb_manager = TensorboardManager(graph_version_dir, batch_cnt)
 
     for epoch in range(initial_epoch, epochs):
 
         # Create directories for current epoch
-        cur_worlds_cur = utils.check_or_create_local_path('epoch%s' % epoch, worlds_dir)
-        cur_previews_dir = utils.check_or_create_local_path('epoch%s' % epoch, previews_dir)
-        cur_models_dir = utils.check_or_create_local_path('epoch%s' % epoch, model_save_dir)
+        cur_worlds_cur = utils.check_or_create_local_path(f'epoch{epoch}', worlds_dir)
+        cur_previews_dir = utils.check_or_create_local_path(f'epoch{epoch}', previews_dir)
+        cur_models_dir = utils.check_or_create_local_path(f'epoch{epoch}', model_save_dir)
 
         print('Shuffling data...')
         np.random.shuffle(x_train)
 
-        for minibatch_index in range(number_of_batches):
+        for batch in range(batch_cnt):
 
             # Get real set of images
-            world_batch = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
+            world_batch = x_train[batch * batch_size:(batch + 1) * batch_size]
 
             # Train
             loss = ae.train_on_batch(world_batch, world_batch)
 
             # Save snapshot of generated images on last batch
-            if minibatch_index == number_of_batches - 1:
+            if batch == batch_cnt - 1:
 
                 # Generate samples
                 generated = ae.predict(world_batch)
 
                 # Save samples
-                for batchImage in range(batch_size):
-                    generated_world = generated[batchImage]
+                for image_num in range(batch_size):
+                    generated_world = generated[image_num]
                     decoded_world = utils.decode_world_sigmoid(block_backward, generated_world)
-                    utils.save_world_data(decoded_world, '%s\\world%s.world' % (cur_worlds_cur, batchImage))
+                    utils.save_world_data(decoded_world, f'{cur_worlds_cur}\\world{image_num}.world')
                     utils.save_world_preview(block_images, decoded_world,
-                                             '%s\\preview%s.png' % (cur_previews_dir, batchImage))
+                                             f'{cur_previews_dir}\\preview{image_num}.png')
 
                 # Save actual worlds
-                for batchImage in range(batch_size):
-                    actual_world = world_batch[batchImage]
+                for image_num in range(batch_size):
+                    actual_world = world_batch[image_num]
                     decoded_world = utils.decode_world_sigmoid(block_backward, actual_world)
                     utils.save_world_preview(block_images, decoded_world,
-                                             '%s\\actual%s.png' % (cur_previews_dir, batchImage))
+                                             f'{cur_previews_dir}\\actual{image_num}.png')
 
             # Write loss
-            tb_manager.log_var('ae_loss', epoch, minibatch_index, loss)
+            tb_manager.log_var('ae_loss', epoch, batch, loss)
 
-            print('epoch [%d/%d] :: batch [%d/%d] :: loss = %f' % (
-                epoch, epochs, minibatch_index, number_of_batches, loss))
+            print(f'epoch [{epoch}/{epochs}] :: batch [{batch}/{batch_cnt}] :: loss = {loss}')
 
             # Save models
-            if minibatch_index % 100 == 99 or minibatch_index == number_of_batches - 1:
+            if batch % 100 == 99 or batch == batch_cnt - 1:
                 print('Saving models...')
                 try:
-                    ae.save('%s\\autoencoder.h5' % cur_models_dir)
-                    ae.save_weights('%s\\autoencoder.weights' % cur_models_dir)
+                    ae.save(f'{cur_models_dir}\\autoencoder.h5')
+                    ae.save_weights(f'{cur_models_dir}\\autoencoder.weights')
                 except ImportError:
                     print('Failed to save data.')
 
@@ -210,7 +209,7 @@ def predict_sample_matlab(network_ver, samples):
 
     print('Loading model...')
     latest_epoch = utils.get_latest_epoch(model_save_dir)
-    auto_encoder = load_model('%s\\epoch%s\\autoencoder.h5' % (model_save_dir, latest_epoch))
+    auto_encoder = load_model(f'{model_save_dir}\\epoch{latest_epoch}\\autoencoder.h5')
 
     print('Loading block images...')
     block_images = utils.load_block_images(res_dir)
@@ -218,7 +217,7 @@ def predict_sample_matlab(network_ver, samples):
     print('Loading encoding dictionaries...')
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
-    x_worlds = os.listdir('%s\\worlds\\' % res_dir)
+    x_worlds = os.listdir(f'{res_dir}\\worlds\\')
     np.random.shuffle(x_worlds)
 
     world_size = auto_encoder.input_shape[1]
@@ -241,7 +240,7 @@ def predict_sample_matlab(network_ver, samples):
 
     sample_num = 0
     for world_filename in x_worlds:
-        world_file = os.path.join('%s\\worlds\\' % res_dir, world_filename)
+        world_file = os.path.join(f'{res_dir}\\worlds\\', world_filename)
         world_id = utils.get_world_id(world_filename)
 
         # Load world and save preview
@@ -255,26 +254,26 @@ def predict_sample_matlab(network_ver, samples):
         encoded_world = auto_encoder.predict(batch_input)
 
         before = utils.decode_world_sigmoid(block_backward, encoded_regions[0])
-        utils.save_world_preview(block_images, before, '%s\\before%s.png' % (plots_dir, sample_num))
+        utils.save_world_preview(block_images, before, f'{plots_dir}\\before{sample_num}.png')
 
         after = utils.decode_world_sigmoid(block_backward, encoded_world[0])
-        utils.save_world_preview(block_images, after, '%s\\after%s.png' % (plots_dir, sample_num))
+        utils.save_world_preview(block_images, after, f'{plots_dir}\\after{sample_num}.png')
 
         # Create before plot
-        before_img = mpimg.imread('%s\\before%s.png' % (plots_dir, sample_num))
+        before_img = mpimg.imread(f'{plots_dir}\\before{sample_num}.png')
         encoded_subplt = fig.add_subplot(rows, cols, sample_num + 1)
-        encoded_subplt.set_title('%s\nActual' % world_id)
+        encoded_subplt.set_title(f'{world_id}\nActual')
         set_ticks()
         plt.imshow(before_img)
 
         # Create after plot
-        after_img = mpimg.imread('%s\\after%s.png' % (plots_dir, sample_num))
+        after_img = mpimg.imread(f'{plots_dir}\\after{sample_num}.png')
         encoded_subplt = fig.add_subplot(rows, cols, sample_num + 2)
-        encoded_subplt.set_title('%s\nEncoded' % world_id)
+        encoded_subplt.set_title(f'{world_id}\nEncoded')
         set_ticks()
         plt.imshow(after_img)
 
-        print('Added plot %i of %s' % ((sample_num / 2) + 1, samples))
+        print(f'Added plot {(sample_num / 2) + 1} of {samples}')
 
         sample_num += 2
         if sample_num >= rows * cols:
@@ -282,7 +281,7 @@ def predict_sample_matlab(network_ver, samples):
 
     print('Saving figure...')
     fig.tight_layout()
-    fig.savefig('%s\\plot.png' % plots_dir, transparent=True)
+    fig.savefig(f'{plots_dir}\\plot.png', transparent=True)
 
 
 def main():

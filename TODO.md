@@ -11,13 +11,13 @@ Helper is trained upon
 Create model that takes in 64x64 input and outputs likelihood of 1 block in the center of the input
 
 Train multiple classifiers for each type
-    - Should help my ability to build a better data set
-    - Should help classifier's performance
-    - Flexible for more classifers in the future (animator, stairs, boss, etc...)
+- Should help my ability to build a better data set
+- Should help classifier's performance
+- Flexible for more classifers in the future (animator, stairs, boss, etc...)
 
--Add more data, scrape by authors instead of by likes
+- Add more data, scrape by authors instead of by likes
     - Can scrape authors from current worlds folder
 
--Model that turns image into handmade art
+- Model that turns image into handmade art
     - Actually might be pretty easy, just train network to produce blocks from minimap
         - Need to only allow blocks with minimap values

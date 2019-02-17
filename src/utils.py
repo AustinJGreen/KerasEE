@@ -13,23 +13,23 @@ from src import blocks
 
 def load_minimap_values(base_dir):
     minimap_dict = {}
-    with open('%s\\block_colors.txt' % base_dir) as fp:
-        line = fp.readline()
-        while line:
-            space_index = line.index(' ')
-            key_str = line[:space_index]
-            argb_str = line[space_index:]
+    with open(f'{base_dir}\\block_colors.txt') as fp:
+        color_data = fp.readline()
+        while color_data:
+            space_index = color_data.index(' ')
+            key_str = color_data[:space_index]
+            argb_str = color_data[space_index:]
             key = int(key_str)
             argb = int(argb_str)
             minimap_dict[key] = argb
-            line = fp.readline()
+            color_data = fp.readline()
     return minimap_dict
 
 
 def load_block_images(base_dir):
     block_dict = {}
-    for filename in os.listdir('%s\\blocks' % base_dir):
-        file = '%s\\blocks\\%s' % (base_dir, filename)
+    for filename in os.listdir(f'{base_dir}\\blocks'):
+        file = f'{base_dir}\\blocks\\{filename}'
         if os.path.isfile(file):
             block_dict[int(filename[1:-4])] = Image.open(file)
     return block_dict
@@ -38,15 +38,15 @@ def load_block_images(base_dir):
 def load_encoding_dict(base_dir, name):
     block_forward_dict = {}
     block_backward_dict = {}
-    with open('%s\\%s.txt' % (base_dir, name)) as fp:
-        line = fp.readline()
-        while line:
-            block = int(line)
+    with open(f'{base_dir}\\{name}.txt') as fp:
+        encoding_data = fp.readline()
+        while encoding_data:
+            block = int(encoding_data)
             assert block not in block_forward_dict
             block_hash = len(block_forward_dict)
             block_forward_dict[block] = block_hash
             block_backward_dict[block_hash] = block
-            line = fp.readline()
+            encoding_data = fp.readline()
     assert len(block_forward_dict) == len(block_backward_dict)
     return block_forward_dict, block_backward_dict
 
@@ -54,23 +54,23 @@ def load_encoding_dict(base_dir, name):
 def load_label_dict(base_dir, name):
     label_dict = {}
 
-    with open('%s\\%s.txt' % (base_dir, name)) as fp:
-        line = fp.readline()
-        while line:
-            split_index = line.rindex(' ')
-            world = line[:split_index]
-            label = int(line[split_index + 1:])
+    with open(f'{base_dir}\\{name}.txt') as fp:
+        label_data = fp.readline()
+        while label_data:
+            split_index = label_data.rindex(' ')
+            world = label_data[:split_index]
+            label = int(label_data[split_index + 1:])
             label_dict[world] = label
-            line = fp.readline()
+            label_data = fp.readline()
 
     return label_dict
 
 
 def save_label_dict(base_dir, name, label_dict):
-    with open('%s\\%s.txt' % (base_dir, name), 'w') as fp:
+    with open(f'{base_dir}\\{name}.txt', 'w') as fp:
         for world_id in label_dict.keys():
             label = label_dict[world_id]
-            fp.write('%s %s\n' % (world_id, label))
+            fp.write(f'{world_id} {label}\n')
 
 
 def convert_labels(raw_labels, categories=10, epsilon=1e-10):
@@ -102,7 +102,7 @@ def convert_labels_binary(raw_labels, epsilon=1e-10):
 
 
 def random_mask_high(width, height, channels=10):
-    '''Generates a random irregular mask based off of rectangles'''
+    # Generates a random irregular mask based off of rectangles
     mask = np.zeros((width, height, channels), np.int8)
 
     max_size = 12
@@ -140,7 +140,7 @@ def random_mask_high(width, height, channels=10):
 
 
 def random_mask_low(height, width, channels=11):
-    '''Generates a random irregular mask based off of rectangles'''
+    # Generates a random irregular mask based off of rectangles
     mask = np.zeros((height, width, channels), np.int8)
 
     max_size = 20
@@ -332,8 +332,8 @@ def save_rgb_map(rgb_map, name):
                 img.putpixel((x, y), (r, g, b))
         img.save(name)
         img.close()
-    except:
-        print('Failed to save world minimap to %s' % name)
+    except IOError:
+        print(f'Failed to save world minimap to {name}')
 
 
 def load_world_data_ver2(world_file):
@@ -391,8 +391,8 @@ def save_world_data(world_data, name):
                 f.write(str(int(world_data[x, y])))
                 f.write('\n')
         f.close()
-    except:
-        print('Failed to save world data to %s' % name)
+    except IOError:
+        print(f'Failed to save world data to {name}')
 
 
 def save_world_minimap(minimap_values, world_data, name):
@@ -403,7 +403,7 @@ def save_world_minimap(minimap_values, world_data, name):
     elif len(world_data.shape) == 3 and world_data.shape[2] == 2:
         save_world_minimap3d(minimap_values, world_data, name)
     else:
-        print('Unable to save minimap with shape %s' % world_data.shape)
+        print(f'Unable to save minimap with shape {world_data.shape}')
 
 
 def save_world_minimap2d(minimap, world_data, name):
@@ -422,8 +422,8 @@ def save_world_minimap2d(minimap, world_data, name):
                     img.putpixel((x, y), (r, g, b))
         img.save(name)
         img.close()
-    except:
-        print('Failed to save world minimap to %s' % name)
+    except IOError:
+        print(f'Failed to save world minimap to {name}')
 
 
 def save_world_minimap3d(minimap, world_data, name):
@@ -446,13 +446,13 @@ def save_world_minimap3d(minimap, world_data, name):
                             img.putpixel((x, y), (r, g, b))
         img.save(name)
         img.close()
-    except:
-        print('Failed to save world minimap to %s' % name)
+    except IOError:
+        print(f'Failed to save world minimap to {name}')
 
 
 def save_world_preview(block_images, world_data, name):
     if os.path.exists(name):
-        print('%s already exists, skipping.' % name)
+        print(f'{name} already exists, skipping.')
         return
 
     try:
@@ -470,8 +470,8 @@ def save_world_preview(block_images, world_data, name):
                     img.paste(block_image, (x * 16, y * 16))
         img.save(name, compress_level=1)
         img.close()
-    except:
-        print('Failed to save world minimap to %s' % name)
+    except IOError:
+        print(f'Failed to save world minimap to {name}')
 
 
 def shuffle_unison(a, b):
@@ -484,7 +484,7 @@ def check_or_create_local_path(name, base_dir=None):
     if base_dir is None:
         base_dir = os.getcwd()
 
-    local_dir = '%s\\%s\\' % (base_dir, name)
+    local_dir = f'{base_dir}\\{name}\\'
     if not os.path.exists(local_dir):
         os.makedirs(local_dir)
     return local_dir
@@ -527,7 +527,7 @@ def save_source_to_dir(base_dir):
     cur_dir = os.getcwd()
     for path in os.listdir(cur_dir):
         if os.path.isfile(path):
-            copyfile(path, '%s\\%s' % (source_dir, path))
+            copyfile(path, f'{source_dir}\\{path}')
 
 
 def get_world_id(world_file):
@@ -538,12 +538,12 @@ def get_world_id(world_file):
 def get_latest_epoch(directory):
     highest_epoch = -1
     for path in os.listdir(directory):
-        fullpath = os.path.join(directory, path)
-        if os.path.isdir(fullpath):
+        full_path = os.path.join(directory, path)
+        if os.path.isdir(full_path):
 
             # Check if directory is empty
-            isempty = len(os.listdir(fullpath)) == 0
-            if isempty:
+            is_empty = len(os.listdir(full_path)) == 0
+            if is_empty:
                 continue
 
             if path[:5] == 'epoch':
@@ -586,17 +586,17 @@ def rotate_world90(world_data):
 def save_train_data(train_data, block_images, base_dir):
     for i in range(train_data.shape[0]):
         decoded_world = decode_world_sigmoid(train_data[i])
-        save_world_preview(block_images, decoded_world, '%s\\image%s.png' % (base_dir, i))
+        save_world_preview(block_images, decoded_world, f'{base_dir}\\image{i}.png')
 
 
 def save_world_repo_previews(world_repo, output_dir):
     block_images = load_block_images()
 
     cur_dir = os.getcwd()
-    repo_dir = '%s\\%s' % (cur_dir, world_repo)
+    repo_dir = f'{cur_dir}\\{world_repo}'
     for world_name in os.listdir(repo_dir):
-        world_file = '%s\\%s' % (repo_dir, world_name)
-        dest_file = '%s\\%s.png' % (output_dir, world_name)
+        world_file = f'{repo_dir}\\{world_name}'
+        dest_file = f'{output_dir}\\{world_name}.png'
         if not os.path.exists(dest_file):
             world_data = load_world_data_ver3(world_file)
             if world_data.shape[0] >= 100 and world_data.shape[1] >= 100:

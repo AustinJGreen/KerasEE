@@ -2,84 +2,14 @@ import os
 
 import keras
 import numpy as np
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import Conv2DTranspose, Conv2D
-from keras.layers.core import Dense, Reshape, Activation
-from keras.layers.merge import Concatenate
-from keras.layers.normalization import BatchNormalization
+from keras.layers.convolutional import Conv2D
+from keras.layers.core import Activation
 from keras.models import Input
 from keras.models import Model, Sequential, load_model
 
 import utils
-from loadworker import load_worlds_with_minimaps
-from pro_classifier import build_classifier
+from loadworker import load_minimaps
 from tbmanager import TensorboardManager
-
-
-def build_pro_animator(size):
-    # Takes in latent input, and target minimap colors
-    # Outputs a pro looking world whose minimap also reflects the target minimap
-
-    # Calculate starting kernel size
-    n = size
-    while n > 7:
-        n = n // 2
-
-    # Calculate latent_units, get closest factor with enough units (>1024 units each)
-    latent_units = n * n
-    while latent_units < 1024:
-        latent_units = latent_units * 2
-
-    # Calculate starting filters
-    f = (2 * latent_units) // (n * n)
-
-    latent_input = Input(shape=(128,))
-    latent = Dense(units=latent_units)(latent_input)
-
-    target_input = Input(shape=(size, size, 3))
-    target = Reshape(target_shape=(size * size * 3,))(target_input)
-    target = Dense(units=latent_units)(target)
-
-    animator = Concatenate()([latent, target])
-    animator = Reshape(target_shape=(n, n, f))(animator)
-
-    s = n
-    while s < size:
-        animator = Conv2DTranspose(f, kernel_size=5, strides=1, padding='same')(animator)
-        animator = BatchNormalization(momentum=0.8)(animator)
-        animator = LeakyReLU()(animator)
-
-        animator = Conv2DTranspose(f, kernel_size=3, strides=2, padding='same')(animator)
-        animator = BatchNormalization(momentum=0.8)(animator)
-        animator = LeakyReLU()(animator)
-
-        s = s * 2
-        f = f // 2
-
-    animator = Conv2DTranspose(10, kernel_size=5, strides=1, padding='same')(animator)
-    animator = Activation('sigmoid')(animator)
-
-    animator_model = Model(inputs=[latent_input, target_input], outputs=animator)
-    animator_model.summary()
-
-    # Build model to train animator to produce maps with the correct minimap
-    translator_model = build_translator(size)
-    translator_model.trainable = False
-    # TODO: Load translator model
-
-    animator_minimap_model = translator_model(animator_model)
-
-    # Build model to train animator to produce good looking maps
-    classifier_model = build_classifier(size)
-    classifier_model.trainable = False
-    # TODO: Load pro model
-
-    animator_pro_model = Sequential()
-    animator_pro_model.add(animator_model)
-    animator_pro_model.add(classifier_model)
-    animator_pro_model.summary()
-
-    return animator_minimap_model, animator_pro_model, animator_model
 
 
 def build_basic_animator(size):
@@ -110,7 +40,7 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
     no_version = version_name is None
     if no_version:
         latest = utils.get_latest_version(model_dir)
-        version_name = 'ver%s' % (latest + 1)
+        version_name = f'ver{latest + 1}'
 
     version_dir = utils.check_or_create_local_path(version_name, model_dir)
     graph_dir = utils.check_or_create_local_path('graph', model_dir)
@@ -129,10 +59,10 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
     block_images = utils.load_block_images(res_dir)
 
     print('Loading encoding dictionaries...')
-    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_colored')
+    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     print('Building model from scratch...')
-    animator = build_basic_animator(112)
+    animator = build_basic_animator(sz)
     animator.compile(loss='mse', optimizer='adam')
 
     translator = load_model(f'{all_models_dir}\\translator\\ver15\\models\\best_loss.h5')
@@ -147,8 +77,7 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
     keras.utils.plot_model(animator, to_file=f'{version_dir}\\animator.png', show_shapes=True, show_layer_names=True)
 
     print('Loading worlds...')
-    y_train, x_train = load_worlds_with_minimaps(world_count, f'{res_dir}\\worlds\\', (sz, sz), block_forward,
-                                                 mm_values)
+    x_train = load_minimaps(world_count, f'{res_dir}\\worlds\\', (sz, sz), block_forward, mm_values)
 
     world_count = x_train.shape[0]
     number_of_batches = (world_count - (world_count % batch_size)) // batch_size
@@ -160,8 +89,8 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
     for epoch in range(epochs):
 
         # Create directories for current epoch
-        cur_previews_dir = utils.check_or_create_local_path('epoch%s' % epoch, previews_dir)
-        cur_models_dir = utils.check_or_create_local_path('epoch%s' % epoch, model_save_dir)
+        cur_previews_dir = utils.check_or_create_local_path(f'epoch{epoch}', previews_dir)
+        cur_models_dir = utils.check_or_create_local_path(f'epoch{epoch}', model_save_dir)
 
         print('Shuffling data...')
         np.random.shuffle(x_train)
@@ -184,17 +113,17 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
                 worlds = animator.predict(minimaps)
                 for i in range(batch_size):
                     world_decoded = utils.decode_world_sigmoid(block_backward, worlds[i])
-                    utils.save_world_preview(block_images, world_decoded, '%s\\animated%s.png' % (cur_previews_dir, i))
+                    utils.save_world_preview(block_images, world_decoded, f'{cur_previews_dir}\\animated{i}.png')
 
                     mm_decoded = utils.decode_world_minimap(minimaps[i])
-                    utils.save_rgb_map(mm_decoded, '%s\\target%s.png' % (cur_previews_dir, i))
+                    utils.save_rgb_map(mm_decoded, f'{cur_previews_dir}\\target{i}.png')
 
             # Save models
             if minibatch_index % 100 == 99 or minibatch_index == number_of_batches - 1:
                 print('Saving models...')
                 try:
-                    animator.save('%s\\animator.h5' % cur_models_dir)
-                    animator.save_weights('%s\\animator.weights' % cur_models_dir)
+                    animator.save(f'{cur_models_dir}\\animator.h5')
+                    animator.save_weights(f'{cur_models_dir}\\animator.weights')
                 except ImportError:
                     print('Failed to save data.')
 

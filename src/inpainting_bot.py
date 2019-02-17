@@ -12,16 +12,16 @@ from playerio import *
 from playerio.initparse import get_world_data
 
 world_data = None  # block data for bot
-pconv_unet = None
-block_images = utils.load_block_images('C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\res\\')
-block_forward, block_backward = utils.load_encoding_dict('C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\res\\',
-                                                         'blocks_optimized')
+global pconv_unet
+cur_dir = os.getcwd()
+res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
+block_images = utils.load_block_images(res_dir)
+block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 global graph
 
 
 def build_for(r, player_id):
     global world_data
-    global pconv_unet
     global block_images
 
     coords = []
@@ -70,7 +70,7 @@ def build_for(r, player_id):
             cur_block_data = world_data[x, y, 0]
             input_data[loc_x, loc_y] = cur_block_data.block_id
 
-    utils.save_world_preview(block_images, input_data, '%s\\input.png' % cur_dir)
+    utils.save_world_preview(block_images, input_data, f'{cur_dir}\\input.png')
 
     encoded_input = utils.encode_world_sigmoid(block_forward, input_data)
     encoded_input[input_mask == 0] = 1
@@ -80,7 +80,7 @@ def build_for(r, player_id):
         encoded_context_data = pconv_unet.predict([[encoded_input], [input_mask]])
 
     context_data = utils.decode_world_sigmoid(block_backward, encoded_context_data[0])
-    utils.save_world_preview(block_images, context_data, '%s\\real.png' % cur_dir)
+    utils.save_world_preview(block_images, context_data, f'{cur_dir}\\real.png')
 
     for i in range(len(coords)):
         x = coords[i][0]
@@ -109,7 +109,7 @@ def on_init(r, init_message):
         for y in range(height):
             wd[x, y] = world_data[x, y, 0].block_id
 
-    utils.save_world_preview(block_images, wd, '%s\\init.png' % os.getcwd())
+    utils.save_world_preview(block_images, wd, f'{cur_dir}\\init.png')
 
 
 @EventHandler.add('b')
@@ -154,9 +154,7 @@ def on_disconnect(r, disconnect_message):
 
 # Connect to the game
 print('Logging in...')
-username = None
-password = None
-with open('C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\res\\ugp') as fp:
+with open(f'{res_dir}\\ugp') as fp:
     line = fp.readline()
     spl = line.split(' ')
     username = spl[0]
@@ -177,12 +175,10 @@ bot_room.send('init')
 
 build_queue = []  # (x, y) mask queue for bot
 
-cur_dir = 'C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\'
-
 print('Loading context model...')
 contextnet = unet_model.PConvUnet(None, [7, 14, 21], inference_only=True)
 pconv_unet = contextnet.build_pconv_unet(train_bn=False, lr=0.0001)
-pconv_unet.load_weights('%s\\models\\inpainting\\ver8\\models\\epoch3\\unet.weights' % cur_dir)
+pconv_unet.load_weights(f'{cur_dir}\\models\\inpainting\\ver8\\models\\epoch3\\unet.weights')
 graph = tf.get_default_graph()
 
 print('Done loading model.')

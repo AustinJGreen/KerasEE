@@ -1,4 +1,3 @@
-import multiprocessing
 import os
 
 import keras
@@ -22,7 +21,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     no_version = version_name is None
     if no_version:
         latest = utils.get_latest_version(model_dir)
-        version_name = 'ver%s' % (latest + 1)
+        version_name = f'ver{latest}'
 
     version_dir = utils.check_or_create_local_path(version_name, model_dir)
     graph_dir = utils.check_or_create_local_path('graph', model_dir)
@@ -45,13 +44,13 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     # Load model
     print('Loading model...')
     feature_model = auto_encoder.autoencoder_model()
-    feature_model.load_weights('%s\\auto_encoder\\ver15\\models\\epoch28\\autoencoder.weights' % all_models_dir)
+    feature_model.load_weights(f'{all_models_dir}\\auto_encoder\\ver15\\models\\epoch28\\autoencoder.weights')
     feature_layers = [7, 14, 21]
 
     contextnet = PConvUnet(feature_model, feature_layers, inference_only=False)
     unet = contextnet.build_pconv_unet(train_bn=True, lr=0.0001)
     unet.summary()
-    # pconv_unet.load_weights('%s\\ver43\\models\\epoch4\\unet.weights' % contextnet_dir)
+    # pconv_unet.load_weights(f'{contextnet_dir}\\ver43\\models\\epoch4\\unet.weights')
 
     if no_version:
         # Delete existing worlds and previews if any
@@ -60,7 +59,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         utils.delete_files_in_path(previews_dir)
 
     print('Saving model images...')
-    keras.utils.plot_model(unet, to_file='%s\\unet.png' % version_dir, show_shapes=True,
+    keras.utils.plot_model(unet, to_file=f'{version_dir}\\unet.png', show_shapes=True,
                            show_layer_names=True)
 
     # Set up tensorboard
@@ -70,38 +69,35 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     unet_loss_summary.value.add(tag='unet_loss', simple_value=None)
 
     # Load Data
-    cpu_count = multiprocessing.cpu_count()
-    utilization_count = cpu_count - 1
-    print('Loading worlds using %s cores.' % utilization_count)
-    x_train = load_worlds(world_count, '%s\\worlds\\' % res_dir, (128, 128), block_forward, utils.encode_world_sigmoid)
+    x_train = load_worlds(world_count, f'{res_dir}\\worlds\\', (128, 128), block_forward)
 
     # Start Training loop
     world_count = x_train.shape[0]
-    number_of_batches = (world_count - (world_count % batch_size)) // batch_size
+    batch_cnt = (world_count - (world_count % batch_size)) // batch_size
 
     for epoch in range(initial_epoch, epochs):
 
-        print('Epoch = %s ' % epoch)
+        print(f'Epoch = {epoch}')
         # Create directories for current epoch
-        cur_worlds_cur = utils.check_or_create_local_path('epoch%s' % epoch, worlds_dir)
-        cur_previews_dir = utils.check_or_create_local_path('epoch%s' % epoch, previews_dir)
-        cur_models_dir = utils.check_or_create_local_path('epoch%s' % epoch, model_save_dir)
+        cur_worlds_cur = utils.check_or_create_local_path(f'epoch{epoch}', worlds_dir)
+        cur_previews_dir = utils.check_or_create_local_path(f'epoch{epoch}', previews_dir)
+        cur_models_dir = utils.check_or_create_local_path(f'epoch{epoch}', model_save_dir)
 
         print('Shuffling data...')
         np.random.shuffle(x_train)
 
-        for minibatch_index in range(number_of_batches):
+        for batch in range(batch_cnt):
 
             # Get real set of images
-            world_batch = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
+            world_batch = x_train[batch * batch_size:(batch + 1) * batch_size]
             world_batch_masked, world_masks = utils.mask_batch_high(world_batch)
 
-            if minibatch_index % 1000 == 999 or minibatch_index == number_of_batches - 1:
+            if batch % 1000 == 999 or batch == batch_cnt - 1:
 
                 # Save model
                 try:
-                    unet.save('%s\\unet.h5' % cur_models_dir)
-                    unet.save_weights('%s\\unet.weights' % cur_models_dir)
+                    unet.save(f'{cur_models_dir}\\unet.h5')
+                    unet.save_weights(f'{cur_models_dir}\\unet.weights')
                 except ImportError:
                     print('Failed to save data.')
 
@@ -109,22 +105,21 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
                 test = unet.predict([world_batch_masked, world_masks])
 
                 d0 = utils.decode_world_sigmoid(block_backward, world_batch[0])
-                utils.save_world_preview(block_images, d0, '%s\\%s_orig.png' % (cur_previews_dir, minibatch_index))
+                utils.save_world_preview(block_images, d0, f'{cur_previews_dir}\\{batch}_orig.png')
 
                 d1 = utils.decode_world_sigmoid(block_backward, test[0])
-                utils.save_world_preview(block_images, d1, '%s\\%s_fixed.png' % (cur_previews_dir, minibatch_index))
+                utils.save_world_preview(block_images, d1, f'{cur_previews_dir}\\{batch}_fixed.png')
 
                 d2 = utils.decode_world_sigmoid(block_backward, world_batch_masked[0])
-                utils.save_world_preview(block_images, d2, '%s\\%s_masked.png' % (cur_previews_dir, minibatch_index))
+                utils.save_world_preview(block_images, d2, f'{cur_previews_dir}\\{batch}_masked.png')
 
             loss = unet.train_on_batch([world_batch_masked, world_masks], world_batch)
 
             unet_loss_summary.value[0].simple_value = loss / 1000.0  # Divide by 1000 for better Y-Axis values
-            tb_writer.add_summary(unet_loss_summary, (epoch * number_of_batches) + minibatch_index)
+            tb_writer.add_summary(unet_loss_summary, (epoch * batch_cnt) + batch)
             tb_writer.flush()
 
-            print('epoch [%d/%d] :: batch [%d/%d] :: unet_loss = %f' % (
-                epoch, epochs, minibatch_index, number_of_batches, loss))
+            print(f'epoch [{epoch}/{epochs}] :: batch [{batch}/{batch_cnt}] :: unet_loss = {loss}')
 
 
 def main():

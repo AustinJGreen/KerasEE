@@ -37,7 +37,7 @@ def train(epochs, batch_size, world_count, size, version_name=None):
     no_version = version_name is None
     if no_version:
         latest = utils.get_latest_version(model_dir)
-        version_name = 'ver%s' % (latest + 1)
+        version_name = f'ver{latest + 1}'
 
     version_dir = utils.check_or_create_local_path(version_name, model_dir)
     graph_dir = utils.check_or_create_local_path('graph', model_dir)
@@ -59,20 +59,20 @@ def train(epochs, batch_size, world_count, size, version_name=None):
     translator.compile(optimizer='adam', loss='mse')
 
     print('Loading worlds...')
-    x_train, y_train = load_worlds_with_minimaps(world_count, '%s\\worlds\\' % res_dir, (size, size), block_forward,
+    x_train, y_train = load_worlds_with_minimaps(world_count, f'{res_dir}\\worlds\\', (size, size), block_forward,
                                                  minimap_values)
 
-    best_loss_callback = keras.callbacks.ModelCheckpoint('%s\\best_loss.h5' % model_save_dir, verbose=0,
+    best_loss_callback = keras.callbacks.ModelCheckpoint(f'{model_save_dir}\\best_loss.h5', verbose=0,
                                                          save_best_only=True, save_weights_only=False, mode='min',
                                                          period=1, monitor='loss')
 
     # Create callback for automatically saving latest model so training can be resumed. Saves every epoch
-    latest_h5_callback = keras.callbacks.ModelCheckpoint('%s\\latest.h5' % model_save_dir, verbose=0,
+    latest_h5_callback = keras.callbacks.ModelCheckpoint(f'{model_save_dir}\\latest.h5', verbose=0,
                                                          save_best_only=False,
                                                          save_weights_only=False, mode='auto', period=1)
 
     # Create callback for automatically saving latest weights so training can be resumed. Saves every epoch
-    latest_weights_callback = keras.callbacks.ModelCheckpoint('%s\\latest.weights' % model_save_dir, verbose=0,
+    latest_weights_callback = keras.callbacks.ModelCheckpoint(f'{model_save_dir}\\latest.weights', verbose=0,
                                                               save_best_only=False,
                                                               save_weights_only=True, mode='auto', period=1)
 
@@ -105,20 +105,20 @@ def test(version_name, samples):
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     print('Loading model...')
-    translator = load_model('%s\\best_loss.h5' % model_save_dir)
+    translator = load_model(f'{model_save_dir}\\best_loss.h5')
     size = translator.input_shape[1]
 
     print('Loading worlds...')
-    x_train, y_train = load_worlds_with_minimaps(samples, '%s\\worlds\\' % res_dir, (size, size), block_forward,
+    x_train, y_train = load_worlds_with_minimaps(samples, f'{res_dir}\\worlds\\', (size, size), block_forward,
                                                  minimap_values)
 
     for i in range(samples):
         utils.save_world_preview(block_images, utils.decode_world_sigmoid(block_backward, x_train[i]),
-                                 '%s\\world%s.png' % (tests_dir, i))
-        utils.save_rgb_map(utils.decode_world_minimap(y_train[i]), '%s\\truth%s.png' % (tests_dir, i))
+                                 f'{tests_dir}\\world{i}.png')
+        utils.save_rgb_map(utils.decode_world_minimap(y_train[i]), f'{tests_dir}\\truth{i}.png')
 
         y_predict = translator.predict(np.array([x_train[i]]))
-        utils.save_rgb_map(utils.decode_world_minimap(y_predict[0]), '%s\\test%s.png' % (tests_dir, i))
+        utils.save_rgb_map(utils.decode_world_minimap(y_predict[0]), f'{tests_dir}\\test{i}.png')
 
 
 def main():

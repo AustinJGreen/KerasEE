@@ -102,7 +102,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     no_version = version_name is None
     if no_version:
         latest = utils.get_latest_version(model_dir)
-        version_name = 'ver%s' % (latest + 1)
+        version_name = f'ver{latest + 1}'
 
     version_dir = utils.check_or_create_local_path(version_name, model_dir)
     graph_dir = utils.check_or_create_local_path('graph', model_dir)
@@ -126,28 +126,28 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
     # Try to load full model, otherwise try to load weights
     size = 64
-    cur_models = '%s\\epoch%s' % (model_save_dir, initial_epoch - 1)
-    if os.path.exists('%s\\discriminator.h5' % cur_models) and os.path.exists('%s\\generator.h5' % cur_models):
+    cur_models = f'{model_save_dir}\\epoch{initial_epoch - 1}'
+    if os.path.exists(f'{cur_models}\\discriminator.h5') and os.path.exists(f'{cur_models}\\generator.h5'):
         print('Building model from files...')
-        d = load_model('%s\\discriminator.h5' % cur_models)
-        g = load_model('%s\\generator.h5' % cur_models)
+        d = load_model(f'{cur_models}\\discriminator.h5')
+        g = load_model(f'{cur_models}\\generator.h5')
 
-        if os.path.exists('%s\\d_g.h5' % cur_models):
-            d_on_g = load_model('%s\\d_g.h5' % cur_models)
+        if os.path.exists(f'{cur_models}\\d_g.h5'):
+            d_on_g = load_model(f'{cur_models}\\d_g.h5')
         else:
             g_optim = Adam(lr=0.0001, beta_1=0.5)
             d_on_g = generator_containing_discriminator(g, d)
             d_on_g.compile(loss='binary_crossentropy', optimizer=g_optim)
-    elif os.path.exists('%s\\discriminator.weights' % cur_models) and os.path.exists(
-            '%s\\generator.weights' % cur_models):
+    elif os.path.exists(f'{cur_models}\\discriminator.weights') and os.path.exists(
+            f'{cur_models}\\generator.weights'):
         print('Building model with weights...')
         d_optim = Adam(lr=0.00001)
         d = build_discriminator(size)
-        d.load_weights('%s\\discriminator.weights' % cur_models)
+        d.load_weights(f'{cur_models}\\discriminator.weights')
         d.compile(loss='binary_crossentropy', optimizer=d_optim, metrics=['accuracy'])
 
         g = build_generator(size)
-        g.load_weights('%s\\generator.weights' % cur_models)
+        g.load_weights(f'{cur_models}\\generator.weights')
 
         g_optim = Adam(lr=0.0001, beta_1=0.5)
         d_on_g = generator_containing_discriminator(g, d)
@@ -174,39 +174,38 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         utils.delete_files_in_path(previews_dir)
 
         print('Saving model images...')
-        keras.utils.plot_model(d, to_file='%s\\discriminator.png' % version_dir, show_shapes=True,
+        keras.utils.plot_model(d, to_file=f'{version_dir}\\discriminator.png', show_shapes=True,
                                show_layer_names=True)
-        keras.utils.plot_model(g, to_file='%s\\generator.png' % version_dir, show_shapes=True, show_layer_names=True)
+        keras.utils.plot_model(g, to_file=f'{version_dir}\\generator.png', show_shapes=True, show_layer_names=True)
 
     # Load Data
     print('Loading worlds...')
     label_dict = utils.load_label_dict(res_dir, 'pro_labels_b')
-    x_train = load_worlds_with_label(world_count, '%s\\worlds\\' % res_dir, label_dict, 1, (size, size), block_forward,
-                                     overlap_x=1, overlap_y=1)
+    x_train = load_worlds_with_label(world_count, f'{res_dir}\\worlds\\', label_dict, 1, (size, size), block_forward)
 
     world_count = x_train.shape[0]
-    number_of_batches = (world_count - (world_count % batch_size)) // batch_size
+    batch_cnt = (world_count - (world_count % batch_size)) // batch_size
 
     # Set up tensorboard
     print('Setting up tensorboard...')
-    tb_manager = TensorboardManager(graph_version_dir, number_of_batches)
+    tb_manager = TensorboardManager(graph_version_dir, batch_cnt)
 
     preview_frequency_sec = 5 * 60.0
     for epoch in range(initial_epoch, epochs):
 
         # Create directories for current epoch
-        cur_worlds_cur = utils.check_or_create_local_path('epoch%s' % epoch, worlds_dir)
-        cur_previews_dir = utils.check_or_create_local_path('epoch%s' % epoch, previews_dir)
-        cur_models_dir = utils.check_or_create_local_path('epoch%s' % epoch, model_save_dir)
+        cur_worlds_dir = utils.check_or_create_local_path(f'epoch{epoch}', worlds_dir)
+        cur_previews_dir = utils.check_or_create_local_path(f'epoch{epoch}', previews_dir)
+        cur_models_dir = utils.check_or_create_local_path(f'epoch{epoch}', model_save_dir)
 
         print('Shuffling data...')
         np.random.shuffle(x_train)
 
         last_save_time = time.time()
-        for minibatch_index in range(number_of_batches):
+        for batch in range(batch_cnt):
 
             # Get real set of images
-            real_worlds = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
+            real_worlds = x_train[batch * batch_size:(batch + 1) * batch_size]
 
             # Get fake set of images
             noise = np.random.normal(0, 1, size=(batch_size, 256))
@@ -217,49 +216,46 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
             # Train discriminator on real worlds
             d_loss = d.train_on_batch(real_worlds, real_labels)
-            d_acc_real = d_loss[1]
-            d_loss_real = d_loss[0]
-            tb_manager.log_var('d_acc_real', epoch, minibatch_index, d_loss[1])
-            tb_manager.log_var('d_loss_real', epoch, minibatch_index, d_loss[0])
+            acc_real = d_loss[1]
+            loss_real = d_loss[0]
+            tb_manager.log_var('d_acc_real', epoch, batch, d_loss[1])
+            tb_manager.log_var('d_loss_real', epoch, batch, d_loss[0])
 
             # Train discriminator on fake worlds
             d_loss = d.train_on_batch(fake_worlds, fake_labels)
-            d_acc_fake = d_loss[1]
-            d_loss_fake = d_loss[0]
-            tb_manager.log_var('d_acc_fake', epoch, minibatch_index, d_loss[1])
-            tb_manager.log_var('d_loss_fake', epoch, minibatch_index, d_loss[0])
+            acc_fake = d_loss[1]
+            loss_fake = d_loss[0]
+            tb_manager.log_var('d_acc_fake', epoch, batch, d_loss[1])
+            tb_manager.log_var('d_loss_fake', epoch, batch, d_loss[0])
 
             # Training generator on X data, with Y labels
             # noise = np.random.normal(0, 1, (batch_size, 256))
 
             # Train generator to generate real
             g_loss = d_on_g.train_on_batch(noise, real_labels)
-            tb_manager.log_var('g_loss', epoch, minibatch_index, g_loss)
+            tb_manager.log_var('g_loss', epoch, batch, g_loss)
 
-            print('epoch [%d/%d] :: batch [%d/%d] :: fake_acc = %.1f%% :: real_acc = %.1f%% :: '
-                  'fake_loss = %s :: real_loss = %s :: gen_loss = %s' % (
-                      epoch, epochs, minibatch_index, number_of_batches, d_acc_fake * 100, d_acc_real * 100,
-                      d_loss_fake, d_loss_real, g_loss))
+            print(f'epoch [{epoch}/{epochs}] :: batch [{batch}/{batch_cnt}] :: fake_acc = {acc_fake}:: '
+                  f'real_acc = {acc_real} :: fake_loss = {loss_fake} :: real_loss = {loss_real} :: gen_loss = {g_loss}')
 
             # Save models
             time_since_save = time.time() - last_save_time
-            if time_since_save >= preview_frequency_sec or minibatch_index == number_of_batches - 1:
+            if time_since_save >= preview_frequency_sec or batch == batch_cnt - 1:
                 print('Saving previews...')
-                for batchImage in range(batch_size):
-                    generated_world = fake_worlds[batchImage]
+                for i in range(batch_size):
+                    generated_world = fake_worlds[i]
                     decoded_world = utils.decode_world_sigmoid(block_backward, generated_world)
-                    utils.save_world_data(decoded_world, '%s\\world%s.world' % (cur_worlds_cur, batchImage))
-                    utils.save_world_preview(block_images, decoded_world,
-                                             '%s\\preview%s.png' % (cur_previews_dir, batchImage))
+                    utils.save_world_data(decoded_world, f'{cur_worlds_dir}\\world{i}.world')
+                    utils.save_world_preview(block_images, decoded_world, f'{cur_previews_dir}\\preview{i}.png')
 
                 print('Saving models...')
                 try:
-                    d.save('%s\\discriminator.h5' % cur_models_dir)
-                    g.save('%s\\generator.h5' % cur_models_dir)
-                    d_on_g.save('%s\\d_g.h5' % cur_models_dir)
-                    d.save_weights('%s\\discriminator.weights' % cur_models_dir)
-                    g.save_weights('%s\\generator.weights' % cur_models_dir)
-                    d_on_g.save_weights('%s\\d_g.weights' % cur_models_dir)
+                    d.save(f'{cur_models_dir}\\discriminator.h5')
+                    g.save(f'{cur_models_dir}\\generator.h5')
+                    d_on_g.save(f'{cur_models_dir}\\d_g.h5')
+                    d.save_weights(f'{cur_models_dir}\\discriminator.weights')
+                    g.save_weights(f'{cur_models_dir}\\generator.weights')
+                    d_on_g.save_weights(f'{cur_models_dir}\\d_g.weights')
                 except ImportError:
                     print('Failed to save data.')
 
