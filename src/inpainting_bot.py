@@ -1,4 +1,3 @@
-# Import the library
 import os
 import time
 from threading import Lock
@@ -166,8 +165,7 @@ client = Client('everybody-edits-su9rn58o40itdbnw69plyw', username, password)
 version = client.bigdb_load('config', 'config')['version']
 
 # Join a room
-
-bot_room = client.create_join_room('PWrO5qmOGjb0I', f'Everybodyedits{version}', True)
+bot_room = client.create_join_room('PWc23tUpK0bEI', f'Everybodyedits{version}', True)
 
 # Send a message
 print('Joining world...')

@@ -449,8 +449,8 @@ def save_world_minimap3d(minimap, world_data, name):
         print(f'Failed to save world minimap to {name}')
 
 
-def save_world_preview(block_images, world_data, name):
-    if os.path.exists(name):
+def save_world_preview(block_images, world_data, name, overwrite=False):
+    if os.path.exists(name) and not overwrite:
         print(f'{name} already exists, skipping.')
         return
 

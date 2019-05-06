@@ -16,10 +16,7 @@ from keras import backend as K
 # You can tweak these setting to obtain new visual effects.
 scale = 10
 rand_params = (np.random.rand(1, 4)[0] * scale) - (scale / 2)
-good_params = [-0.5, 1.9, 1.3, 0.5]
-interesting_params = [-1.87673595,  2.23979389,  3.22691387, -2.42502887]
-
-params = rand_params
+params = [1.03186447,  4.94900884,  4.52247586, -1.00151375]
 print(params)
 
 settings = {
@@ -36,6 +33,7 @@ K.set_learning_phase(0)
 # Build the InceptionV3 network with our placeholder.
 # The model will be loaded with pre-trained ImageNet weights.
 cur_dir = os.getcwd()
+kerasee_dir = os.path.abspath(os.path.join(cur_dir, '..'))
 res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
 models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
 model = load_model(f'{models_dir}\\pro_classifier\\ver38\\models\\latest.h5')
@@ -56,10 +54,7 @@ for layer_name in settings['features']:
     x = layer_dict[layer_name].output
     # We avoid border artifacts by only involving non-border pixels in the loss.
     scaling = K.prod(K.cast(K.shape(x), 'float32'))
-    if K.image_data_format() == 'channels_first':
-        loss += coeff * K.sum(K.square(x[:, :, 2: -2, 2: -2])) / scaling
-    else:
-        loss += coeff * K.sum(K.square(x[:, 2: -2, 2: -2, :])) / scaling
+    loss += coeff * K.sum(K.square(x[:, 2: -2, 2: -2, :])) / scaling
 
 # Compute the gradients of the dream wrt the loss.
 grads = K.gradients(loss, dream)[0]
@@ -88,40 +83,32 @@ def resize_world(world, size):
     return scipy.ndimage.zoom(world, factors, order=1)
 
 
-def gradient_ascent(x, iterations, step, max_loss=None):
-    for i in range(iterations):
-        loss_value, grad_values = eval_loss_and_grads(x)
-        if max_loss is not None and loss_value > max_loss:
+def gradient_ascent(gradx, ascent_cnt, step_value, maximum_loss=None):
+    for ascent_i in range(ascent_cnt):
+        loss_value, grad_values = eval_loss_and_grads(gradx)
+        if maximum_loss is not None and loss_value > maximum_loss:
             break
-        print('..Loss value at', i, ':', loss_value)
-        x = np.add(x, np.multiply(step, grad_values, casting='unsafe'), casting='unsafe')
-    return x
+        print('..Loss value at', ascent_i, ':', loss_value)
+        gradx = np.add(gradx, step_value * grad_values, casting='unsafe')
+    return gradx
+
 
 # Playing with these hyperparameters will also allow you to achieve new effects
-step = 0.01  # Gradient ascent step size
-num_octave = 3  # Number of scales at which to run gradient ascent
-octave_scale = 1.25  # Size ratio between scales
+step = 0.05  # Gradient ascent step size
+num_octave = 2  # Number of scales at which to run gradient ascent
+octave_scale = 2  # Size ratio between scales
 iterations = 100  # Number of ascent steps per scale
-max_loss = 1
+max_loss = 3
 
 # Load resources
-
-
 block_images = utils.load_block_images(res_dir)
 block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
-world_id = 'PWZLUPeLFza0I'
+world_id = 'PWx8GZHg60cEI'
 
 world_data = utils.load_world_data_ver3(f'{res_dir}\\worlds\\{world_id}.world')
 
-# Get center section
-world_size = world_data.shape[0]
-input_size = int(model.input.shape[1])
-start = (world_size // 2) - (input_size // 2)
-end = start + input_size
-world_input_data = world_data[start:end, start:end]
-
-world_encoded = np.array([utils.encode_world_sigmoid(block_forward, world_input_data)])
+world_encoded = np.array([utils.encode_world_sigmoid(block_forward, world_data)])
 original_shape = world_encoded.shape[1:3]
 successive_shapes = [original_shape]
 for i in range(1, num_octave):
@@ -135,15 +122,10 @@ for shape in successive_shapes:
     print('Processing image shape', shape)
     world_encoded = resize_world(world_encoded, shape)
     world_encoded = gradient_ascent(world_encoded,
-                                    iterations=iterations,
-                                    step=step,
-                                    max_loss=max_loss)
-    upscaled_shrunk_original_world = resize_world(shrunk_original_world, shape)
-    same_size_original = resize_world(original_world, shape)
-    lost_detail = same_size_original - upscaled_shrunk_original_world
-    world_encoded += lost_detail
-    shrunk_original_world = resize_world(original_world, shape)
+                                    ascent_cnt=iterations,
+                                    step_value=step,
+                                    maximum_loss=max_loss)
 
 world_dream = utils.decode_world_sigmoid(block_backward, np.copy(world_encoded)[0])
-utils.save_world_preview(block_images, world_dream, f'{cur_dir}\\dream.png')
-utils.save_world_preview(block_images, world_input_data, f'{cur_dir}\\input.png')
+utils.save_world_preview(block_images, world_dream, f'{kerasee_dir}\\dream.png', overwrite=True)
+utils.save_world_preview(block_images, world_data, f'{kerasee_dir}\\input.png', overwrite=True)
