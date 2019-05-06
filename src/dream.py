@@ -35,8 +35,10 @@ K.set_learning_phase(0)
 
 # Build the InceptionV3 network with our placeholder.
 # The model will be loaded with pre-trained ImageNet weights.
-model = load_model(
-    'C:\\Users\\austi\\Documents\\PycharmProjects\\KerasEE\\models\\pro_classifier\\ver38\\models\\latest.h5')
+cur_dir = os.getcwd()
+res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
+models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
+model = load_model(f'{models_dir}\\pro_classifier\\ver38\\models\\latest.h5')
 
 dream = model.input
 print('Model loaded.')
@@ -95,23 +97,6 @@ def gradient_ascent(x, iterations, step, max_loss=None):
         x = np.add(x, np.multiply(step, grad_values, casting='unsafe'), casting='unsafe')
     return x
 
-
-"""
-Process:
-- Load the original image.
-- Define a number of processing scales (i.e. image shapes),
-    from smallest to largest.
-- Resize the original image to the smallest scale.
-- For every scale, starting with the smallest (i.e. current one):
-    - Run gradient ascent
-    - Upscale image to the next scale
-    - Reinject the detail that was lost at upscaling time
-- Stop when we are back to the original size.
-To obtain the detail lost during upscaling, we simply
-take the original image, shrink it down, upscale it,
-and compare the result to the (resized) original image.
-"""
-
 # Playing with these hyperparameters will also allow you to achieve new effects
 step = 0.01  # Gradient ascent step size
 num_octave = 3  # Number of scales at which to run gradient ascent
@@ -120,13 +105,12 @@ iterations = 100  # Number of ascent steps per scale
 max_loss = 1
 
 # Load resources
-cur_dir = os.getcwd()
-res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
+
 
 block_images = utils.load_block_images(res_dir)
 block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
-world_id = 'PW7W3RcLd3cEI'
+world_id = 'PWZLUPeLFza0I'
 
 world_data = utils.load_world_data_ver3(f'{res_dir}\\worlds\\{world_id}.world')
 

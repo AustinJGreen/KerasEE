@@ -1,4 +1,6 @@
 res/
 models/
+src/*.png
 src/__pycache__/
+src/playerio/__pycache__/
 .idea/
