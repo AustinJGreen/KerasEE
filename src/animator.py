@@ -2,6 +2,7 @@ import os
 
 import keras
 import numpy as np
+from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Conv2D
 from keras.layers.core import Activation
 from keras.models import Input
@@ -17,9 +18,8 @@ def build_basic_animator(size):
     # Outputs a real world whose minimap is supposed to reflect the target minimap
 
     animator_input = Input(shape=(size, size, 3))
-    animator = Conv2D(filters=2048, kernel_size=(1, 1), strides=(1, 1), padding='same')(animator_input)
-    # animator = BatchNormalization(momentum=0.8, axis=3)(animator)
-    animator = Activation('relu')(animator)
+    animator = Conv2D(filters=1024, kernel_size=(1, 1), strides=(1, 1), padding='same')(animator_input)
+    animator = LeakyReLU()(animator)
     animator = Conv2D(filters=10, kernel_size=(1, 1), strides=(1, 1), padding='same')(animator)
     animator = Activation('sigmoid')(animator)
 
@@ -80,11 +80,11 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
     x_train = load_minimaps(world_count, f'{res_dir}\\worlds\\', (sz, sz), block_forward, mm_values)
 
     world_count = x_train.shape[0]
-    number_of_batches = (world_count - (world_count % batch_size)) // batch_size
+    batch_cnt = (world_count - (world_count % batch_size)) // batch_size
 
     # Set up tensorboard
     print('Setting up tensorboard...')
-    tb_manager = TensorboardManager(graph_version_dir, number_of_batches)
+    tb_manager = TensorboardManager(graph_version_dir, batch_cnt)
 
     for epoch in range(epochs):
 
@@ -95,31 +95,32 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
         print('Shuffling data...')
         np.random.shuffle(x_train)
 
-        for minibatch_index in range(number_of_batches):
-            minimaps = x_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
+        for batch in range(batch_cnt):
+            minimaps = x_train[batch * batch_size:(batch + 1) * batch_size]
             # actual = y_train[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
 
             # Train animator
             # world_loss = animator.train_on_batch(minimaps, actual)
             minimap_loss = animator_minimap.train_on_batch(minimaps, minimaps)
-            tb_manager.log_var('mm_loss', epoch, minibatch_index, minimap_loss)
+            tb_manager.log_var('mm_loss', epoch, batch, minimap_loss)
 
-            print(f"Epoch = {epoch}/{epochs} :: Batch = {minibatch_index}/{number_of_batches} "
+            print(f"Epoch = {epoch}/{epochs} :: Batch = {batch}/{batch_cnt} "
                   f":: MMLoss = {minimap_loss}")
 
-            # Save previews
-            if minibatch_index == number_of_batches - 1:
+            # Save previews and models
+            if batch == batch_cnt - 1:
                 print('Saving previews...')
                 worlds = animator.predict(minimaps)
+                trained = animator_minimap.predict(minimaps)
                 for i in range(batch_size):
                     world_decoded = utils.decode_world_sigmoid(block_backward, worlds[i])
                     utils.save_world_preview(block_images, world_decoded, f'{cur_previews_dir}\\animated{i}.png')
+                    utils.save_world_minimap(mm_values, world_decoded, f'{cur_previews_dir}\\actual{i}.png')
+                    utils.save_rgb_map(utils.decode_world_minimap(trained[i]), f'{cur_previews_dir}\\trained{i}.png')
 
                     mm_decoded = utils.decode_world_minimap(minimaps[i])
                     utils.save_rgb_map(mm_decoded, f'{cur_previews_dir}\\target{i}.png')
 
-            # Save models
-            if minibatch_index % 100 == 99 or minibatch_index == number_of_batches - 1:
                 print('Saving models...')
                 try:
                     animator.save(f'{cur_models_dir}\\animator.h5')
@@ -129,7 +130,7 @@ def train(epochs, batch_size, world_count, sz=64, version_name=None):
 
 
 def main():
-    train(epochs=13, batch_size=1, world_count=10000, sz=112)
+    train(epochs=30, batch_size=1, world_count=10000, sz=112)
     # predict('ver9', dict_src_name='pro_labels')
 
 

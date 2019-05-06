@@ -17,7 +17,7 @@ from loadworker import load_worlds_with_label
 from tbmanager import TensorboardManager
 
 
-def build_generator(size):
+def build_generator(size, latent_dim):
     model = Sequential(name='generator')
 
     # Calculate starting kernel size
@@ -28,7 +28,7 @@ def build_generator(size):
     s = n
     f = 512
 
-    model.add(Dense(input_dim=256, units=n * n * f))
+    model.add(Dense(input_dim=latent_dim, units=n * n * f))
     model.add(LeakyReLU())
 
     model.add(Reshape((n, n, f)))
@@ -92,7 +92,7 @@ def generator_containing_discriminator(g, d):
     return model
 
 
-def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
+def train(epochs, batch_size, world_count, latent_dim, version_name=None, initial_epoch=0):
     cur_dir = os.getcwd()
     res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
     all_models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
@@ -161,7 +161,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
         d.compile(loss='binary_crossentropy', optimizer=d_optim, metrics=['accuracy'])
         d.summary()
 
-        g = build_generator(size)
+        g = build_generator(size, latent_dim)
         g.summary()
 
         d_on_g = generator_containing_discriminator(g, d)
@@ -181,7 +181,8 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
     # Load Data
     print('Loading worlds...')
     label_dict = utils.load_label_dict(res_dir, 'pro_labels_b')
-    x_train = load_worlds_with_label(world_count, f'{res_dir}\\worlds\\', label_dict, 1, (size, size), block_forward)
+    x_train = load_worlds_with_label(world_count, f'{res_dir}\\worlds\\', label_dict, 1, (size, size), block_forward,
+                                     overlap_x=0.1, overlap_y=0.1)
 
     world_count = x_train.shape[0]
     batch_cnt = (world_count - (world_count % batch_size)) // batch_size
@@ -208,13 +209,14 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             real_worlds = x_train[batch * batch_size:(batch + 1) * batch_size]
 
             # Get fake set of images
-            noise = np.random.normal(0, 1, size=(batch_size, 256))
+            noise = np.random.normal(0, 1, size=(batch_size, latent_dim))
             fake_worlds = g.predict(noise)
 
             real_labels = np.ones((batch_size, 1))  # np.random.uniform(0.9, 1.1, size=(batch_size,))
             fake_labels = np.zeros((batch_size, 1))  # np.random.uniform(-0.1, 0.1, size=(batch_size,))
 
             # Train discriminator on real worlds
+            d.trainable = True
             d_loss = d.train_on_batch(real_worlds, real_labels)
             acc_real = d_loss[1]
             loss_real = d_loss[0]
@@ -223,6 +225,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
             # Train discriminator on fake worlds
             d_loss = d.train_on_batch(fake_worlds, fake_labels)
+            d.trainable = False
             acc_fake = d_loss[1]
             loss_fake = d_loss[0]
             tb_manager.log_var('d_acc_fake', epoch, batch, d_loss[1])
@@ -235,7 +238,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
             g_loss = d_on_g.train_on_batch(noise, real_labels)
             tb_manager.log_var('g_loss', epoch, batch, g_loss)
 
-            print(f'epoch [{epoch}/{epochs}] :: batch [{batch}/{batch_cnt}] :: fake_acc = {acc_fake}:: '
+            print(f'epoch [{epoch}/{epochs}] :: batch [{batch}/{batch_cnt}] :: fake_acc = {acc_fake} :: '
                   f'real_acc = {acc_real} :: fake_loss = {loss_fake} :: real_loss = {loss_real} :: gen_loss = {g_loss}')
 
             # Save models
@@ -263,7 +266,7 @@ def train(epochs, batch_size, world_count, version_name=None, initial_epoch=0):
 
 
 def main():
-    train(epochs=100, batch_size=64, world_count=16000, initial_epoch=0)
+    train(epochs=100, batch_size=100, world_count=64000, latent_dim=128, initial_epoch=0)
 
 
 if __name__ == '__main__':
