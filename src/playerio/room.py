@@ -1,9 +1,8 @@
 import socket
-
-from ._deserializer import Deserializer
-from ._serializer import Serializer
-from .event_handler import EventHandler
 from .message import Message
+from ._serializer import Serializer
+from ._deserializer import Deserializer
+from .event_handler import EventHandler
 
 
 class Room:
@@ -33,11 +32,8 @@ class Room:
         self.__deserializer.disconnect()
 
     def send(self, message, *args):
-        m = message
-        if type(message) != Message:
-            m = Message(message, *args)
-        print(f'Sending {m}')
-        self.__socket.send(Serializer.serialize_message(m))
+        self.__socket.send(Serializer.serialize_message(message if type(message) == Message else
+                                                        Message(message, *args)))
 
     def __broadcast_message(self, message):
         if message.type == 'playerio.joinresult':

@@ -9,7 +9,7 @@ class PlayerIOError(Exception):
     @property
     def code(self):
         return self.__error.code
-
+    
     @property
     def message(self):
         return self.__error.message

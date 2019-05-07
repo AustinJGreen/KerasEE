@@ -2,10 +2,7 @@ import numpy as np
 import scipy
 import utils
 import os
-import argparse
 
-from keras.applications import inception_v3
-from pro_classifier import build_classifier
 from keras.models import load_model
 from keras import backend as K
 
@@ -16,7 +13,11 @@ from keras import backend as K
 # You can tweak these setting to obtain new visual effects.
 scale = 10
 rand_params = (np.random.rand(1, 4)[0] * scale) - (scale / 2)
-params = [1.03186447,  4.94900884,  4.52247586, -1.00151375]
+
+subtle = [1.03186447,  4.94900884,  4.52247586, -1.00151375]
+colors = [2.84376834, -4.96601078, -0.03940069, -4.7203666]
+
+params = colors
 print(params)
 
 settings = {
@@ -56,9 +57,8 @@ for layer_name in settings['features']:
     scaling = K.prod(K.cast(K.shape(x), 'float32'))
     loss += coeff * K.sum(K.square(x[:, 2: -2, 2: -2, :])) / scaling
 
-# Compute the gradients of the dream wrt the loss.
+# Compute the gradients of the dream wrt the loss and normalize gradients
 grads = K.gradients(loss, dream)[0]
-# Normalize gradients.
 grads /= K.maximum(K.mean(K.abs(grads)), K.epsilon())
 
 # Set up function to retrieve the value
@@ -67,8 +67,8 @@ outputs = [loss, grads]
 fetch_loss_and_grads = K.function([dream], outputs)
 
 
-def eval_loss_and_grads(x):
-    outs = fetch_loss_and_grads([x])
+def eval_loss_and_grads(input_x):
+    outs = fetch_loss_and_grads([input_x])
     loss_value = outs[0]
     grad_values = outs[1]
     return loss_value, grad_values
@@ -83,49 +83,57 @@ def resize_world(world, size):
     return scipy.ndimage.zoom(world, factors, order=1)
 
 
-def gradient_ascent(gradx, ascent_cnt, step_value, maximum_loss=None):
+def gradient_ascent(grad_x, ascent_cnt, step_value, maximum_loss=None):
     for ascent_i in range(ascent_cnt):
-        loss_value, grad_values = eval_loss_and_grads(gradx)
+        loss_value, grad_values = eval_loss_and_grads(grad_x)
         if maximum_loss is not None and loss_value > maximum_loss:
             break
-        print('..Loss value at', ascent_i, ':', loss_value)
-        gradx = np.add(gradx, step_value * grad_values, casting='unsafe')
-    return gradx
+        grad_x = np.add(grad_x, step_value * grad_values, casting='unsafe')
+    return grad_x
 
 
-# Playing with these hyperparameters will also allow you to achieve new effects
-step = 0.05  # Gradient ascent step size
-num_octave = 2  # Number of scales at which to run gradient ascent
-octave_scale = 2  # Size ratio between scales
-iterations = 100  # Number of ascent steps per scale
-max_loss = 3
+def dream(world_data):
+    # Playing with these hyperparameters will also allow you to achieve new effects
+    step = 0.05  # Gradient ascent step size
+    num_octave = 4  # Number of scales at which to run gradient ascent
+    octave_scale = 1.1  # Size ratio between scales
+    iterations = 100  # Number of ascent steps per scale
+    max_loss = 3
 
-# Load resources
-block_images = utils.load_block_images(res_dir)
-block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
+    # Load resources
+    block_images = utils.load_block_images(res_dir)
+    block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
-world_id = 'PWx8GZHg60cEI'
+    world_encoded = np.array([utils.encode_world_sigmoid(block_forward, world_data)])
+    world_orig = np.copy(world_encoded)
 
-world_data = utils.load_world_data_ver3(f'{res_dir}\\worlds\\{world_id}.world')
+    original_shape = world_encoded.shape[1:3]
+    successive_shapes = [original_shape]
+    for i in range(1, num_octave):
+        shape = tuple([int(dim / (octave_scale ** i)) for dim in original_shape])
+        successive_shapes.append(shape)
+    successive_shapes = successive_shapes[::-1]
 
-world_encoded = np.array([utils.encode_world_sigmoid(block_forward, world_data)])
-original_shape = world_encoded.shape[1:3]
-successive_shapes = [original_shape]
-for i in range(1, num_octave):
-    shape = tuple([int(dim / (octave_scale ** i)) for dim in original_shape])
-    successive_shapes.append(shape)
-successive_shapes = successive_shapes[::-1]
-original_world = np.copy(world_encoded)
-shrunk_original_world = resize_world(world_encoded, successive_shapes[0])
+    for shape in successive_shapes:
+        print('Processing image shape', shape)
+        world_encoded = resize_world(world_encoded, shape)
+        world_encoded = gradient_ascent(world_encoded,
+                                        ascent_cnt=iterations,
+                                        step_value=step,
+                                        maximum_loss=max_loss)
 
-for shape in successive_shapes:
-    print('Processing image shape', shape)
-    world_encoded = resize_world(world_encoded, shape)
-    world_encoded = gradient_ascent(world_encoded,
-                                    ascent_cnt=iterations,
-                                    step_value=step,
-                                    maximum_loss=max_loss)
+    world_dream = utils.decode_world_sigmoid(block_backward, world_encoded[0])
+    utils.save_world_preview(block_images, world_dream, f'{kerasee_dir}\\dream.png', overwrite=True)
+    utils.save_world_preview(block_images, world_data, f'{kerasee_dir}\\input.png', overwrite=True)
 
-world_dream = utils.decode_world_sigmoid(block_backward, np.copy(world_encoded)[0])
-utils.save_world_preview(block_images, world_dream, f'{kerasee_dir}\\dream.png', overwrite=True)
-utils.save_world_preview(block_images, world_data, f'{kerasee_dir}\\input.png', overwrite=True)
+
+def main():
+    # world_data = utils.load_world_live('PWcxcdMHDna0I', credential='kw')
+    world_data = utils.load_world_eelvl('C:\\Users\\austi\\Desktop\\PWlzL4SX1ecUI.eelvl')
+    # world_id = 'PWrO5qmOGjb0I'
+    # world_data = utils.load_world_data_ver3(f'{res_dir}\\worlds\\{world_id}.world')
+    dream(world_data)
+
+
+if __name__ == '__main__':
+    main()

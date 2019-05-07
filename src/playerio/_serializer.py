@@ -1,8 +1,8 @@
-import struct
 from io import BytesIO
-
+import struct
 
 class Serializer:
+
     PATTERNS = {
         'false': 0x00,
         'true': 0x01,
@@ -45,14 +45,14 @@ class Serializer:
                 return bytes([Serializer.PATTERNS['unsigned_short_int'] | value])
             return Serializer.__get_header(Serializer.PATTERNS['int'], value)
 
+        if value_type == float:
+            return bytes([Serializer.PATTERNS['double']]) + bytes(struct.pack(">d", value))
+
         if value_type == str:
             encoded_value = value.encode()
             if len(encoded_value) < 64:
                 return bytes([Serializer.PATTERNS['short_string'] | len(encoded_value)]) + encoded_value
             return Serializer.__get_header(Serializer.PATTERNS['string'], len(encoded_value)) + encoded_value
-
-        if value_type == float:
-            return bytes([Serializer.PATTERNS['double']]) + Serializer.__encode_value(value)
 
         raise NotImplementedError(f'Value type {value_type} is not implemented yet')
 
@@ -63,6 +63,10 @@ class Serializer:
 
     @staticmethod
     def __encode_value(value):
-        if isinstance(value, float):
-            return bytes(struct.pack('>d', value))
-        return bytes(struct.pack('>i', value)).lstrip(b'\x00')
+        encode = b''
+        while True:
+            encode += bytes([value & 0xFF])
+            value >>= 8
+            if value == 0:
+                break
+        return encode[:: -1]

@@ -1,12 +1,12 @@
 import struct
 from io import BytesIO
 from threading import Thread
-
-from ._serializer import Serializer
 from .message import Message
+from ._serializer import Serializer
 
 
 class Deserializer:
+
     __STATE = {
         'init': 0,
         'header': 1,

@@ -1,7 +1,7 @@
 // PlayerIO Protocol Buffers
-// protoc --python_out=./ playerio.proto && mv playerio_pb2.py _protocol.py 
+// protoc --python_out=./ playerio.proto && mv playerio_pb2.py _protocol_pb2.py 
 
-syntax = 'proto3';
+syntax = "proto3";
 
 
 message SimpleConnectRequest {
@@ -125,7 +125,7 @@ message BigDBArrayElement {
 }
 
 message BigDBLoadRequest {
-    repeated BigDBObjectId object_ids = 1;
+    repeated BigDBObjectId objects_ids = 1;
 }
 
 message BigDBLoadOutput {
@@ -139,5 +139,5 @@ message BigDBLoadError {
 
 message BigDBObjectId {
     string table = 1;
-    repeated string keys = 2;
+    string key = 2;
 }

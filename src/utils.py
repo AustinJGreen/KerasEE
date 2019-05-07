@@ -1,13 +1,18 @@
 import gzip
 import os
+import struct
+import zlib
 from random import randint
 from shutil import copyfile, rmtree
+from threading import Lock
 
 import numpy as np
 from PIL import Image
 from skimage.draw import ellipse
 from skimage.draw import line
 
+from playerio import *
+from playerio.initparse import get_world_data
 from src import blocks
 
 
@@ -378,18 +383,193 @@ def load_world_data_ver3(world_file):
     return world
 
 
+def load_world_live(world_id, **kwargs):
+    # Connect to the game
+    print('Logging in...')
+    cur_dir = os.getcwd()
+    res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
+
+    if 'credential' in kwargs:
+        credential = kwargs.get('credential')
+        with open(f'{res_dir}\\{credential}') as fp:
+            line = fp.readline()
+            spl = line.split(' ')
+            username = spl[0]
+            password = spl[1]
+    elif 'user' in kwargs and 'pass' in kwargs:
+        username = kwargs.get('user')
+        password = kwargs.get('pass')
+    else:
+        username = 'guest'
+        password = 'guest'
+
+    init_lock = Lock()
+    init_lock.acquire()
+
+    global wd
+    wd = None
+
+    @EventHandler.add('init')
+    def on_init(r, init_message):
+        print('Got init')
+        r.send('init2')
+
+        width = init_message[18]
+        height = init_message[19]
+
+        global wd
+        wd = np.empty((width, height), dtype=int)
+
+        world_data = get_world_data(init_message)
+        for x in range(width):
+            for y in range(height):
+                wd[x, y] = world_data[x, y, 0].block_id
+
+        init_lock.release()
+
+    temp_client = Client('everybody-edits-su9rn58o40itdbnw69plyw', username, password)
+
+    # Get the game version from BigDB
+    version = temp_client.bigdb_load('config', 'config')['version']
+
+    # Join a room
+    room = temp_client.create_join_room(world_id, f'Everybodyedits{version}', True)
+    room.send('init')
+    init_lock.acquire(timeout=5.0)
+    room.disconnect()
+    return wd
+
+
+def load_world_eelvl(filename):
+    def read_string(data, index):
+        str_len = struct.unpack('>h', data[index:index + 2])[0]
+        return data[index + 2:index + 2 + str_len].tobytes().decode('utf-8'), index + 2 + str_len
+
+    def read_int(data, index):
+        int_data = struct.unpack('>i', data[index:index + 4])[0]
+        return int_data, index + 4
+
+    def read_float(data, index):
+        float_data = struct.unpack('>f', data[index: index + 4])[0]
+        return float_data, index + 4
+
+    def read_uint(data, index):
+        uint_data = struct.unpack('>I', data[index:index + 4])[0]
+        return uint_data, index + 4
+
+    def read_bool(data, index):
+        bool_data = struct.unpack('>?', data[index:index + 1])[0]
+        return bool_data, index + 1
+
+    def read_ushort_array(data, index):
+        length, index = read_int(data, index)
+        array = []
+        for i in range(length // 2):
+            ushort_value = data[index + (2 * i)] << 8 | data[index + ((2 * i) + 1)]
+            array.append(ushort_value)
+        return array, index + length
+
+    morph_ids = [327, 328, 273, 440, 276, 277, 279, 280, 447, 449,
+                 450, 451, 452, 456, 457, 458, 464, 465, 471, 477,
+                 475, 476, 481, 482, 483, 497, 492, 493, 494, 1502,
+                 1500, 1507, 1506, 1581, 1587, 1588, 1592, 1593, 1160,
+                 1594, 1595, 1597]
+    rotatable = [375, 376, 379, 380, 377, 378, 438, 439, 1001, 1002,
+                 1003, 1004, 1052, 1053, 1054, 1055, 1056, 1092, 275, 329,
+                 338, 339, 340, 448, 1536, 1537, 1041, 1042, 1043, 1075,
+                 1076, 1077, 1078, 499, 1116, 1117, 1118, 1119, 1120, 1121,
+                 1122, 1123, 1124, 1125, 1535, 1135, 1134, 1538, 1140, 1141,
+                 1155, 1596, 1605, 1606, 1607, 1609, 1610, 1611, 1612, 1614,
+                 1615, 1616, 1617, 361]
+    rotatable_notreally = [1101, 1102, 1103, 1104, 1105]
+    number = [165, 43, 213, 214, 1011, 1012, 113, 1619, 184, 185,
+              467, 1620, 1079, 1080, 1582, 421, 422, 461, 1584]
+    enumerable = [423, 1027, 1028, 418, 417, 420, 419, 453, 1517]
+    music = [83, 77, 1530]
+    portal = [381, 242]
+    worldportal = [374]
+    sign = [385]
+    label = [1000]
+    npc = [1550, 1551, 1552, 1553, 1554, 1555, 1556, 1557, 1558, 1559,
+           1569, 1570, 1571, 1572, 1573, 1574, 1575, 1576, 1577, 1578]
+
+    with open(filename, mode='rb') as f:
+        data = f.read()
+        decompressed = memoryview(zlib.decompress(data, -zlib.MAX_WBITS))
+
+        i = 0
+        owner_name, i = read_string(decompressed, i)
+        world_name, i = read_string(decompressed, i)
+        world_width, i = read_int(decompressed, i)
+        world_height, i = read_int(decompressed, i)
+        gravity, i = read_float(decompressed, i)
+        bg_color, i = read_uint(decompressed, i)
+        description, i = read_string(decompressed, i)
+        campaign, i = read_bool(decompressed, i)
+        crew_id, i = read_string(decompressed, i)
+        crew_name, i = read_string(decompressed, i)
+        crew_status, i = read_int(decompressed, i)
+        minimap, i = read_bool(decompressed, i)
+        owner_id, i = read_string(decompressed, i)
+
+        world = np.zeros((world_width, world_height), dtype=int)
+
+        data_length = len(decompressed)
+        while i < data_length - 8:
+            bid, i = read_int(decompressed, i)
+            layer, i = read_int(decompressed, i)
+            xs, i = read_ushort_array(decompressed, i)
+            ys, i = read_ushort_array(decompressed, i)
+
+            if bid in morph_ids:
+                morph_data, i = read_int(decompressed, i)
+            elif bid in rotatable:
+                rot_data, i = read_int(decompressed, i)
+            elif bid in rotatable_notreally:
+                rot_data, i = read_int(decompressed, i)
+            elif bid in number:
+                num_data, i = read_int(decompressed, i)
+            elif bid in enumerable:
+                enum_data, i = read_int(decompressed, i)
+            elif bid in music:
+                music_data, i = read_int(decompressed, i)
+            elif bid in portal:
+                portal_rot, i = read_int(decompressed, i)
+                portal_id, i = read_int(decompressed, i)
+                portal_target, i = read_int(decompressed, i)
+            elif bid in sign:
+                sign_data, i = read_string(decompressed, i)
+                sign_rot, i = read_int(decompressed, i)
+            elif bid in worldportal:
+                portal_target_id, i = read_string(decompressed, i)
+                portal_spawn, i = read_int(decompressed, i)
+            elif bid in label:
+                label_text, i = read_string(decompressed, i)
+                label_color, i = read_string(decompressed, i)
+                label_wrap, i = read_int(decompressed, i)
+            elif bid in npc:
+                npc_name, i = read_string(decompressed, i)
+                npc_message1, i = read_string(decompressed, i)
+                npc_message2, i = read_string(decompressed, i)
+                npc_message3, i = read_string(decompressed, i)
+
+            if layer == 0:
+                for idx in range(len(xs)):
+                    world[xs[idx], ys[idx]] = bid
+
+        return world
+
 def save_world_data(world_data, name):
     try:
-        f = open(name, 'w')
-        f.write(str(world_data.shape[0]))
-        f.write('\n')
-        f.write(str(world_data.shape[1]))
-        f.write('\n')
-        for y in range(world_data.shape[1]):
-            for x in range(world_data.shape[0]):
-                f.write(str(int(world_data[x, y])))
-                f.write('\n')
-        f.close()
+        with open(name, 'w') as f:
+            f.write(str(world_data.shape[0]))
+            f.write('\n')
+            f.write(str(world_data.shape[1]))
+            f.write('\n')
+            for y in range(world_data.shape[1]):
+                for x in range(world_data.shape[0]):
+                    f.write(str(int(world_data[x, y])))
+                    f.write('\n')
     except IOError:
         print(f'Failed to save world data to {name}')
 

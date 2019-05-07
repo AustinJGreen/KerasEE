@@ -1,8 +1,7 @@
-from ._bigdb import BigDBObject
-from ._http_channel import HTTPChannel
-from ._pb2 import *
 from .room import Room
-
+from ._http_channel import HTTPChannel
+from .bigdb import BigDBObject
+from ._protocol_pb2 import *
 
 class Client:
 
@@ -34,7 +33,7 @@ class Client:
         error_message = LoadMyPlayerObjectError()
 
         self.__channel.request(103, input_message, output_message, error_message)
-        self.__player_object = BigDBObject.parse(output_message.player_object.items)
+        self.__player_object = BigDBObject('PlayerObjects', output_message.player_object)
 
     def list_rooms(self, room_type, limit=0):
         # Initializing room-list parameters
@@ -70,14 +69,21 @@ class Client:
 
         # Initializing the room
         return Room(output_message)
-
-    def bigdb_load(self, table, key):
+    
+    def bigdb_load(self, table, keys):
         # Initializing BigDB load parameters
         input_message = BigDBLoadRequest()
-        obj_id = BigDBObjectId()
-        obj_id.table = table
-        obj_id.keys.extend([key])
-        input_message.object_ids.extend([obj_id])
+
+        single_obj = False
+        if not isinstance(keys, list):
+            single_obj = True
+            keys = [keys]
+
+        for key in keys:
+            obj_id = BigDBObjectId()
+            obj_id.table = table
+            obj_id.key = key
+            input_message.objects_ids.extend([obj_id])
 
         # Initializing request types
         output_message = BigDBLoadOutput()
@@ -86,8 +92,12 @@ class Client:
         # Sending the request
         self.__channel.request(85, input_message, output_message, error_message)
 
-        # Returning the object assuming there's only one object with the specified key
-        return BigDBObject.parse(output_message.objects[0].items)
+        if len(output_message.objects) == 0: # No object found with the specified key
+            return None 
+        elif len(output_message.objects) == 1 and single_obj: # Return a single object
+            return BigDBObject(table, output_message.objects[0])
+        else: # Return an array of objects
+            return [BigDBObject(table, bigdb_obj) for bigdb_obj in output_message.objects] 
 
     @property
     def user_id(self):
