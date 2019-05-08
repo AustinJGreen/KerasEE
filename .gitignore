@@ -1,5 +1,6 @@
 res/
 models/
+eedream/
 src/*.png
 src/__pycache__/
 src/playerio/__pycache__/

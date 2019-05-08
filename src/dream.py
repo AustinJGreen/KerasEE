@@ -5,66 +5,10 @@ import os
 
 from keras.models import load_model
 from keras import backend as K
+import argparse
 
-# These are the names of the layers
-# for which we try to maximize activation,
-# as well as their weight in the final loss
-# we try to maximize.
-# You can tweak these setting to obtain new visual effects.
-scale = 10
-rand_params = (np.random.rand(1, 4)[0] * scale) - (scale / 2)
-
-subtle = [1.03186447,  4.94900884,  4.52247586, -1.00151375]
-colors = [2.84376834, -4.96601078, -0.03940069, -4.7203666]
-
-params = colors
-print(params)
-
-settings = {
-    'features': {
-        'max_pooling2d_1': params[0],
-        'max_pooling2d_2': params[1],
-        'max_pooling2d_3': params[2],
-        'max_pooling2d_4': params[3]
-    },
-}
-
-K.set_learning_phase(0)
-
-# Build the InceptionV3 network with our placeholder.
-# The model will be loaded with pre-trained ImageNet weights.
-cur_dir = os.getcwd()
-kerasee_dir = os.path.abspath(os.path.join(cur_dir, '..'))
-res_dir = os.path.abspath(os.path.join(cur_dir, '..', 'res'))
-models_dir = os.path.abspath(os.path.join(cur_dir, '..', 'models'))
-model = load_model(f'{models_dir}\\pro_classifier\\ver38\\models\\latest.h5')
-
-dream = model.input
-print('Model loaded.')
-
-# Get the symbolic outputs of each "key" layer (we gave them unique names).
-layer_dict = dict([(layer.name, layer) for layer in model.layers])
-
-# Define the loss.
-loss = K.variable(0.)
-for layer_name in settings['features']:
-    # Add the L2 norm of the features of a layer to the loss.
-    if layer_name not in layer_dict:
-        raise ValueError('Layer ' + layer_name + ' not found in model.')
-    coeff = settings['features'][layer_name]
-    x = layer_dict[layer_name].output
-    # We avoid border artifacts by only involving non-border pixels in the loss.
-    scaling = K.prod(K.cast(K.shape(x), 'float32'))
-    loss += coeff * K.sum(K.square(x[:, 2: -2, 2: -2, :])) / scaling
-
-# Compute the gradients of the dream wrt the loss and normalize gradients
-grads = K.gradients(loss, dream)[0]
-grads /= K.maximum(K.mean(K.abs(grads)), K.epsilon())
-
-# Set up function to retrieve the value
-# of the loss and gradients given an input image.
-outputs = [loss, grads]
-fetch_loss_and_grads = K.function([dream], outputs)
+global fetch_loss_and_grads
+fetch_loss_and_grads = None
 
 
 def eval_loss_and_grads(input_x):
@@ -92,7 +36,7 @@ def gradient_ascent(grad_x, ascent_cnt, step_value, maximum_loss=None):
     return grad_x
 
 
-def dream(world_data):
+def do_dream(world_data, res_dir):
     # Playing with these hyperparameters will also allow you to achieve new effects
     step = 0.05  # Gradient ascent step size
     num_octave = 4  # Number of scales at which to run gradient ascent
@@ -105,7 +49,6 @@ def dream(world_data):
     block_forward, block_backward = utils.load_encoding_dict(res_dir, 'blocks_optimized')
 
     world_encoded = np.array([utils.encode_world_sigmoid(block_forward, world_data)])
-    world_orig = np.copy(world_encoded)
 
     original_shape = world_encoded.shape[1:3]
     successive_shapes = [original_shape]
@@ -123,16 +66,101 @@ def dream(world_data):
                                         maximum_loss=max_loss)
 
     world_dream = utils.decode_world_sigmoid(block_backward, world_encoded[0])
-    utils.save_world_preview(block_images, world_dream, f'{kerasee_dir}\\dream.png', overwrite=True)
-    utils.save_world_preview(block_images, world_data, f'{kerasee_dir}\\input.png', overwrite=True)
+    utils.save_world_preview(block_images, world_dream, 'dream.png', overwrite=True)
+    utils.save_world_preview(block_images, world_data, 'input.png', overwrite=True)
 
 
 def main():
-    # world_data = utils.load_world_live('PWcxcdMHDna0I', credential='kw')
-    world_data = utils.load_world_eelvl('C:\\Users\\austi\\Desktop\\PWlzL4SX1ecUI.eelvl')
-    # world_id = 'PWrO5qmOGjb0I'
-    # world_data = utils.load_world_data_ver3(f'{res_dir}\\worlds\\{world_id}.world')
-    dream(world_data)
+    parser = argparse.ArgumentParser(description='Deep dreams with ee.')
+    parser.add_argument('--world', nargs=1, type=str, help='The path to the eelvl file.')
+    parser.add_argument('--resources', nargs=1, type=str, help='The path to the resources directory')
+    parser.add_argument('--model', nargs='?', type=str, help='The path to the h5 model file.',
+                        default='model.h5')
+
+    args = parser.parse_args()
+
+    cur_dir = os.getcwd()
+    res_dir = args.resources[0]
+    if not os.path.abspath(res_dir):
+        res_dir = os.path.join(cur_dir, res_dir)
+
+    print(f'Resource directory = \'{res_dir}\'')
+    if not os.path.exists(res_dir):
+        print('Resources not found.')
+        exit(1)
+
+    model_path = args.model
+    if not os.path.isabs(model_path):
+        model_path = os.path.join(cur_dir, model_path)
+
+    print(f'Model = \'{model_path}\'')
+    if not os.path.exists(model_path):
+        print('Model not found.')
+        exit(1)
+
+    model = load_model(model_path)
+    dream = model.input
+    print('Model loaded.')
+
+    world_path = args.world[0]
+    print(f'World = \'{world_path}\'')
+    if not os.path.isabs(world_path):
+        world_path = os.path.join(cur_dir, world_path)
+
+    if not os.path.exists(world_path):
+        print('World not found.')
+        exit(1)
+
+    world_data = utils.load_world_eelvl(world_path)
+
+    scale = 10
+    rand_params = (np.random.rand(1, 4)[0] * scale) - (scale / 2)
+
+    # Presets
+    subtle = [1.03186447, 4.94900884, 4.52247586, -1.00151375]
+    colors = [2.84376834, -4.96601078, -0.03940069, -4.7203666]
+
+    params = colors
+    print(f'Feature params = {params}')
+
+    settings = {
+        'features': {
+            'max_pooling2d_1': params[0],
+            'max_pooling2d_2': params[1],
+            'max_pooling2d_3': params[2],
+            'max_pooling2d_4': params[3]
+        },
+    }
+
+    K.set_learning_phase(0)
+
+    # Get the symbolic outputs of each "key" layer (we gave them unique names).
+    layer_dict = dict([(layer.name, layer) for layer in model.layers])
+
+    # Define the loss.
+    loss = K.variable(0.)
+    for layer_name in settings['features']:
+        # Add the L2 norm of the features of a layer to the loss.
+        if layer_name not in layer_dict:
+            raise ValueError('Layer ' + layer_name + ' not found in model.')
+        coeff = settings['features'][layer_name]
+        x = layer_dict[layer_name].output
+        # We avoid border artifacts by only involving non-border pixels in the loss.
+        scaling = K.prod(K.cast(K.shape(x), 'float32'))
+        loss += coeff * K.sum(K.square(x[:, 2: -2, 2: -2, :])) / scaling
+
+    # Compute the gradients of the dream wrt the loss and normalize gradients
+    grads = K.gradients(loss, dream)[0]
+    grads /= K.maximum(K.mean(K.abs(grads)), K.epsilon())
+
+    # Set up function to retrieve the value
+    # of the loss and gradients given an input image.
+    outputs = [loss, grads]
+
+    global fetch_loss_and_grads
+    fetch_loss_and_grads = K.function([dream], outputs)
+
+    do_dream(world_data, res_dir)
 
 
 if __name__ == '__main__':

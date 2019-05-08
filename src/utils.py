@@ -13,7 +13,7 @@ from skimage.draw import line
 
 from playerio import *
 from playerio.initparse import get_world_data
-from src import blocks
+import blocks
 
 
 def load_minimap_values(base_dir):
