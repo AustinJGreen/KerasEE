@@ -1,5 +1,6 @@
-rmdir /s /q .\eedream\
+if exist .\eedream\ rd /s /q .\eedream\ 
 mkdir eedream
+if exist eedream.zip del eedream.zip
 xcopy src\playerio\* eedream\playerio\
 xcopy src\blocks.py eedream\
 xcopy src\utils.py eedream\
@@ -22,5 +23,6 @@ echo Profit: Step 4. Open up dream.py and play with parameters. Change params (w
 echo and play around with step, num_octave, octave_scale, iterations and max_loss. >> README.txt
 echo: >> README.txt
 echo - ugp >> README.txt
-powershell.exe -nologo -noprofile -command "& { Compress-Archive -Path .\eedream\* -CompressionLevel Optimal -DestinationPath .\eedream.zip }"
-rmdir /s .\eedream\
+setlocal
+cd /d %~dp0
+start build_dk_zip.cmd
